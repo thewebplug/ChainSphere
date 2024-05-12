@@ -41,6 +41,7 @@ contract SocialMedia {
         string name;
         string bio;
         string profileImageHash;
+        Post[] userPosts;
     }
     
     struct Post {
@@ -51,6 +52,7 @@ contract SocialMedia {
         uint256 upvotes;
         uint256 downvotes;
         address author;
+        Comment[] postComments;
     }
     
     struct Comment {
@@ -73,6 +75,7 @@ contract SocialMedia {
     mapping(string name => address userAddress) private s_usernameToAddress;
     address[] private s_voters;
     mapping(address user => mapping(uint256 postId => bool voteStatus)) private s_hasVoted; //Checks if a user has voted or not
+    Comment[] commentsArray;
     
     
     // Events
@@ -140,7 +143,13 @@ contract SocialMedia {
     // Functions
     function registerUser(string memory _name, string memory _bio, string memory _profileImageHash) public usernameTaken(_name) {
         uint256 id = generateUserId();
-        s_users[msg.sender] = User(id, msg.sender, _name, _bio, _profileImageHash);
+        // For now, this is the way to create a post with empty comments
+        User memory newUser = s_users[msg.sender];
+        newUser.id = id;
+        newUser.userAddress = msg.sender;
+        newUser.name = _name;
+        newUser.bio = _bio;
+        newUser.profileImageHash = _profileImageHash;
         s_usernameToAddress[_name] = msg.sender;
         emit RegisterUser(id, msg.sender, _name);
     }
@@ -157,8 +166,17 @@ contract SocialMedia {
     
     function createPost(string memory _content, string memory _imgHash) public {
         uint256 postId = generatePostId();
-        s_posts[postId] = Post(postId, _content, _imgHash, block.timestamp, 0, 0, msg.sender);
+        // For now, this is the way to create a post with empty comments
+        Post memory newPost = s_posts[postId];
+        newPost.postId = postId;
+        newPost.content = _content;
+        newPost.imgHash = _imgHash;
+        newPost.timestamp = block.timestamp;
+        newPost.author = msg.sender;
         emit PostCreated(postId, msg.sender);
+        // Add the post to user struct
+        // User memory newUser = s_users[msg.sender];
+        // newUser.userPosts.push(newPost);
     }
     
     function editPost(uint _postId, string memory _content, string memory _imgHash) public onlyPostOwner(_postId) {
