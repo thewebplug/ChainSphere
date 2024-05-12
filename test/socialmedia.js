@@ -18,9 +18,12 @@ describe("SocialMedia", function () {
 
   // Test case 1: Registering a user
   it("Should register a new user", async function () {
-    await socialMedia.registerUser("User1", "Bio1", "ImageHash1");
+    const name = "Alice";
+    const bio = "Hello, I'm Alice a SE Engineer";
+
+    await socialMedia.registerUser(name, bio, "ImageHash1");
     const user = await socialMedia.users(owner.address);
-    expect(user.name).to.equal("User1");
+    expect(user.name).to.equal("Alice");
   });
 
   // Test case 2: Creating a post
@@ -28,6 +31,30 @@ describe("SocialMedia", function () {
     await socialMedia.createPost("Content1", "ImageHash1");
     const post = await socialMedia.posts(1); // Assuming postId starts from 1
     expect(post.content).to.equal("Content1");
+  });
+
+  // Test case 3: Editing a post
+  it("Should edit an existing post", async function () {
+    await socialMedia.createPost("Content1", "ImageHash1");
+    await socialMedia.editPost(1, "Edited content", "NewImageHash");
+    const post = await socialMedia.posts(1);
+    expect(post.content).to.equal("Edited content");
+  });
+
+  // Test case 4: Deleting a post
+  it("Should delete an existing post", async function () {
+    await socialMedia.createPost("Content1", "ImageHash1");
+    await socialMedia.deletePost(1);
+    const post = await socialMedia.posts(1);
+    expect(post.content).to.equal(""); // Assuming content is emptied after deletion
+  });
+
+  // Test case 5: Upvoting a post
+  it("Should upvote a post", async function () {
+    await socialMedia.createPost("Content1", "ImageHash1");
+    await socialMedia.upvote(1);
+    const post = await socialMedia.posts(1);
+    expect(post.upvote).to.equal(1);
   });
 
   // Add more test cases for other functions
