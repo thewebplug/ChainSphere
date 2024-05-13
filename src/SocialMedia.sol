@@ -41,7 +41,7 @@ contract SocialMedia {
         string name;
         string bio;
         string profileImageHash;
-        Post[] userPosts;
+        // Post[] userPosts;
     }
     
     struct Post {
@@ -52,7 +52,7 @@ contract SocialMedia {
         uint256 upvotes;
         uint256 downvotes;
         address author;
-        Comment[] postComments;
+        // Comment[] postComments;
     }
     
     struct Comment {
@@ -75,7 +75,11 @@ contract SocialMedia {
     mapping(string name => address userAddress) private s_usernameToAddress;
     address[] private s_voters;
     mapping(address user => mapping(uint256 postId => bool voteStatus)) private s_hasVoted; //Checks if a user has voted or not
-    Comment[] commentsArray;
+    // Comment[] commentsArray;
+    // Post[] postsArray;
+    mapping(address user => Post[]) private userPosts; // maps a user address to array of posts
+    mapping(address postAuthor => mapping(uint256 postId => Comment[])) private postComments; // maps address of the author of post and postId to array of comments
+    mapping(address user => Comment[]) private userComments; // maps a user address to array of comments
     
     
     // Events
@@ -174,9 +178,8 @@ contract SocialMedia {
         newPost.timestamp = block.timestamp;
         newPost.author = msg.sender;
         emit PostCreated(postId, msg.sender);
-        // Add the post to user struct
-        // User memory newUser = s_users[msg.sender];
-        // newUser.userPosts.push(newPost);
+        // Add the post to userPosts
+        userPosts[msg.sender].push(newPost);
     }
     
     function editPost(uint _postId, string memory _content, string memory _imgHash) public onlyPostOwner(_postId) {
@@ -211,13 +214,24 @@ contract SocialMedia {
     
     function getUserPosts(address _userAddress) public view returns(Post[] memory) {
         // Implementation to retrieve all posts by a user
+        return userPosts[_userAddress];
 
     }
     
-    function createComment(uint _postId, string memory _content) public {
+    function createComment(address _postAuthor, uint _postId, string memory _content) public {
         uint256 commentId = generateCommentId();
-        s_comments[commentId] = Comment(commentId, msg.sender, _postId, _content, block.timestamp, 0);
         
+        Comment memory newComment = Comment({
+            commentId: commentId,
+            author: msg.sender,
+            postId: _postId,
+            content: _content,
+            timestamp: block.timestamp,
+            likesCount: 0
+        });
+        // s_comments[commentId] = Comment(commentId, msg.sender, _postId, _content, block.timestamp, 0);
+        postComments[_postAuthor][_postId].push(newComment);
+
         emit CommentCreated(commentId, msg.sender, _postId);
     }
     
@@ -234,7 +248,7 @@ contract SocialMedia {
         s_comments[_commentId].likesCount++;
     }
     
-    function getUsersComment(address _userAddress) public view returns(Comment[] memory) {
+    function getUserComments(address _userAddress) public view returns(Comment[] memory) {
         // Implementation to retrieve all comments by a user
     }
     
