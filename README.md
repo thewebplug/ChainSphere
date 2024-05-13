@@ -66,11 +66,12 @@ $ cast --help
 ```
 
 
-Tasks Carried Out
-1. Removed the Post array from the User struct because I find it difficult to add user post to the array whenever the user creates a new post
-2. Created varable that maps a user address to an array of posts, called `userPosts`. This variable makes it possible to track all posts by a user. This way, any time a user creates a new post, the new post is pushed to the array of posts i.e. `userPosts[msg.sender].push(newPost)`.
-3. Updated the `getUserPosts` function to return all posts by the user.
-4. Removed the Comment array from the Post struct because I find it difficult to add user comment to the array whenever a user comments on a post
-5. Created varable that maps the address of the author of a post and the postId to an array of comments, called `postComments`. This variable makes it possible to track all comments on a post. This way, any time a comment is added to a post, the new comment is pushed to the array of comments i.e. `postComments[_postAuthor][_postId].push(newPost)`.
-6. Created varable that maps the address of a user to an array of comments, called `userComments`. This variable makes it possible to track all comments by a user.
-7. Updated the `getUserComments` function to return all comments by the user.
+Tasks Carried Out:
+Note that the test script is `SocialMediaTest.t.sol`
+1. Created a modifier in the test file called `registerOneUser`. This is to make the code for testing modular and to avoid unnecessary repetition.
+2. Wrote a function `testUserCantRegisterIfUsernameAlreadyExists` in the test file to test the assertion that a user can not register if the username already exists. The test reverts as expected - Test passes.
+3. Wrote a function `testEmitsEventAfterUserRegistration` in the test file to test the assertion that the `UserRegistered` event will be emited after a user is registered successfully. The Test passes.
+4. Wrote a function `testCantChangeUsernameIfUserDoesNotExist` in the test file to test the assertion that a user cannot change username if user does not exist. The Test passes.
+5. Made some changes to the `changerUsername` function in the Smart Contract so that user information is accessed using userId and hereafter, change the username to a new name.
+6. Wrote a function `testCanChangeUsernameWhereAllConditionsAreMet` in the test file to test the assertion that a user can change their username if all conditions are satisfied. The Test passes.
+7. Added a snapshot of test coverage so far.
