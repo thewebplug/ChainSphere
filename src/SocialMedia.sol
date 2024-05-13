@@ -73,7 +73,7 @@ contract SocialMedia {
     ///////////////////////
 
     // Mappings
-    mapping(address userAddress => User) private s_users;
+    mapping(address userAddress => User) private s_addressToUserProfile;
     mapping(uint256 postId => Post) private s_posts;
     mapping(uint256 commentId => Comment) private s_comments;
     
@@ -89,6 +89,7 @@ contract SocialMedia {
     mapping(address user => Comment[]) private userComments; // maps a user address to array of comments
     uint256 userId;
     
+    User[] s_users;
     
     //////////////
     /// Events ///
@@ -134,7 +135,7 @@ contract SocialMedia {
     }
     
     modifier checkUserExists(address _userAddress) {
-        if(s_users[_userAddress].userAddress == address(0)){
+        if(s_addressToUserProfile[_userAddress].userAddress == address(0)){
             revert SocialMedia__UserDoesNotExist();
         }
         _;
@@ -167,20 +168,23 @@ contract SocialMedia {
     function registerUser(string memory _name, string memory _bio, string memory _profileImageHash) public usernameTaken(_name) {
         uint256 id = userId++;
         // For now, this is the way to create a post with empty comments
-        User memory newUser = s_users[msg.sender];
+        User memory newUser = s_addressToUserProfile[msg.sender];
         newUser.id = id;
         newUser.userAddress = msg.sender;
         newUser.name = _name;
         newUser.bio = _bio;
         newUser.profileImageHash = _profileImageHash;
         s_usernameToAddress[_name] = msg.sender;
+
+        // Add user to list of users
+        s_users.push(newUser);
         emit UserRegistered(id, msg.sender, _name);
     }
     
     function changeUsername(string memory _newName) public checkUserExists(msg.sender) usernameTaken(_newName) {
-        delete s_usernameToAddress[s_users[msg.sender].name];
+        delete s_usernameToAddress[s_addressToUserProfile[msg.sender].name];
         s_usernameToAddress[_newName] = msg.sender;
-        s_users[msg.sender].name = _newName;
+        s_addressToUserProfile[msg.sender].name = _newName;
     }
     
     function createPost(string memory _content, string memory _imgHash) public {
@@ -272,7 +276,11 @@ contract SocialMedia {
     }
     
     function getUser(address _userAddress) public view returns(User memory) {
-        return s_users[_userAddress];
+        return s_addressToUserProfile[_userAddress];
+    }
+
+    function getUserById(uint256 _userId) public view returns(User memory) {
+        return s_users[_userId];
     }
 
     function getUserComments(address _userAddress) public view returns(Comment[] memory) {
@@ -281,7 +289,7 @@ contract SocialMedia {
     }
     
     function getUserNameFromAddress(address _userAddress) public view returns(string memory nameOfUser) {
-        User memory user = s_users[_userAddress];
+        User memory user = s_addressToUserProfile[_userAddress];
         nameOfUser = user.name;
     }
     // Owner functions
