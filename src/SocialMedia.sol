@@ -25,7 +25,9 @@
 pragma solidity ^0.8.19;
 
 contract SocialMedia {
-    // Errors
+    //////////////
+    /// Errors ///
+    //////////////
     error SocialMedia__NotOwner();
     error SocialMedia__NotPostOwner();
     error SocialMedia__NotCommentOwner();
@@ -33,8 +35,10 @@ contract SocialMedia {
     error SocialMedia__UserDoesNotExist();
     error SocialMedia__OwnerCannotVote();
     error SocialMedia__AlreadyVoted(); 
-
-    // Structs
+    
+    ///////////////////////////////////
+    /// Type Declarations (Structs) ///
+    ///////////////////////////////////
     struct User {
         uint256 id;
         address userAddress;
@@ -64,9 +68,12 @@ contract SocialMedia {
         uint256 likesCount;
     }
     
-    // State Variables
+    ///////////////////////
+    /// State Variables ///
+    ///////////////////////
+
     // Mappings
-    mapping(address userAddress => User) private s_users;
+    mapping(address userAddress => User) private s_addressToUserProfile;
     mapping(uint256 postId => Post) private s_posts;
     mapping(uint256 commentId => Comment) private s_comments;
     
@@ -80,16 +87,25 @@ contract SocialMedia {
     mapping(address user => Post[]) private userPosts; // maps a user address to array of posts
     mapping(address postAuthor => mapping(uint256 postId => Comment[])) private postComments; // maps address of the author of post and postId to array of comments
     mapping(address user => Comment[]) private userComments; // maps a user address to array of comments
+    uint256 userId;
     
+    User[] s_users;
     
-    // Events
-    event RegisterUser(uint256 id, address userAddress, string name);
-    event PostCreated(uint256 postId, address author);
-    event CommentCreated(uint256 commentId, address author, uint256 postId);
+    //////////////
+    /// Events ///
+    //////////////
+
+    event UserRegistered(uint256 indexed id, address indexed userAddress, string indexed name);
+    event PostCreated(uint256 postId, string authorName);
+    event PostEdited(uint256 postId, address author);
+    event CommentCreated(uint256 indexed commentId, address indexed postAuthor, address indexed commentAuthor, uint256 postId);
+    event PostLiked(uint256 indexed postId, address indexed postAuthor, address indexed liker);
     event Upvoted(uint256 postId, address voter);
     event Downvoted(uint256 postId, address voter);
     
-    // Modifiers
+    /////////////////
+    /// Modifiers ///
+    /////////////////
     modifier onlyOwner() {
         if(msg.sender != owner){
             revert SocialMedia__NotOwner();
@@ -119,7 +135,7 @@ contract SocialMedia {
     }
     
     modifier checkUserExists(address _userAddress) {
-        if(s_users[_userAddress].userAddress == address(0)){
+        if(s_addressToUserProfile[_userAddress].userAddress == address(0)){
             revert SocialMedia__UserDoesNotExist();
         }
         _;
@@ -139,45 +155,54 @@ contract SocialMedia {
         _;
     }
     
-    // Constructor
+    ///////////////////
+    /// Constructor ///
+    ///////////////////
     constructor() {
         owner = msg.sender;
     }
     
-    // Functions
+    /////////////////
+    /// Functions ///
+    /////////////////
     function registerUser(string memory _name, string memory _bio, string memory _profileImageHash) public usernameTaken(_name) {
-        uint256 id = generateUserId();
+        uint256 id = userId++;
         // For now, this is the way to create a post with empty comments
-        User memory newUser = s_users[msg.sender];
+        User memory newUser = s_addressToUserProfile[msg.sender];
         newUser.id = id;
         newUser.userAddress = msg.sender;
         newUser.name = _name;
         newUser.bio = _bio;
         newUser.profileImageHash = _profileImageHash;
         s_usernameToAddress[_name] = msg.sender;
-        emit RegisterUser(id, msg.sender, _name);
+
+        // Add user to list of users
+        s_users.push(newUser);
+        emit UserRegistered(id, msg.sender, _name);
     }
     
     function changeUsername(string memory _newName) public checkUserExists(msg.sender) usernameTaken(_newName) {
-        delete s_usernameToAddress[s_users[msg.sender].name];
+        delete s_usernameToAddress[s_addressToUserProfile[msg.sender].name];
         s_usernameToAddress[_newName] = msg.sender;
-        s_users[msg.sender].name = _newName;
-    }
-    
-    function getUser(address _userAddress) public view returns(User memory) {
-        return s_users[_userAddress];
+        s_addressToUserProfile[msg.sender].name = _newName;
     }
     
     function createPost(string memory _content, string memory _imgHash) public {
-        uint256 postId = generatePostId();
+        uint256 postId = userPosts[msg.sender].length;
         // For now, this is the way to create a post with empty comments
-        Post memory newPost = s_posts[postId];
-        newPost.postId = postId;
-        newPost.content = _content;
-        newPost.imgHash = _imgHash;
-        newPost.timestamp = block.timestamp;
-        newPost.author = msg.sender;
-        emit PostCreated(postId, msg.sender);
+
+        Post memory newPost = Post({
+            postId: postId,
+            content: _content,
+            imgHash: _imgHash,
+            timestamp: block.timestamp,
+            upvotes: 0,
+            downvotes: 0,
+            author: msg.sender
+        });
+
+        string memory nameOfUser = getUserNameFromAddress(msg.sender);
+        emit PostCreated(postId, nameOfUser);
         // Add the post to userPosts
         userPosts[msg.sender].push(newPost);
     }
@@ -186,6 +211,7 @@ contract SocialMedia {
         Post storage post = s_posts[_postId];
         post.content = _content;
         post.imgHash = _imgHash;
+        emit PostEdited(_postId, msg.sender);
     }
     
     function deletePost(uint _postId) public onlyPostOwner(_postId) {
@@ -232,7 +258,8 @@ contract SocialMedia {
         // s_comments[commentId] = Comment(commentId, msg.sender, _postId, _content, block.timestamp, 0);
         postComments[_postAuthor][_postId].push(newComment);
 
-        emit CommentCreated(commentId, msg.sender, _postId);
+        // emit CommentCreated(commentId, msg.sender, _postId);
+        emit CommentCreated(commentId, _postAuthor, msg.sender, _postId);
     }
     
     function editComment(uint256 _commentId, string memory _content) public onlyCommentOwner(_commentId) {
@@ -248,15 +275,29 @@ contract SocialMedia {
         s_comments[_commentId].likesCount++;
     }
     
+    function getUser(address _userAddress) public view returns(User memory) {
+        return s_addressToUserProfile[_userAddress];
+    }
+
+    function getUserById(uint256 _userId) public view returns(User memory) {
+        return s_users[_userId];
+    }
+
     function getUserComments(address _userAddress) public view returns(Comment[] memory) {
         // Implementation to retrieve all comments by a user
+        return userComments[_userAddress];
     }
     
+    function getUserNameFromAddress(address _userAddress) public view returns(string memory nameOfUser) {
+        User memory user = s_addressToUserProfile[_userAddress];
+        nameOfUser = user.name;
+    }
     // Owner functions
     function getBalance() public view onlyOwner returns(uint) {
         return address(this).balance;
     }
     
+
     function transferContractBalance(address payable _to) public onlyOwner {
         _to.transfer(address(this).balance);
     }
