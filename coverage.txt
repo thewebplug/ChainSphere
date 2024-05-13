@@ -1,0 +1,10 @@
+Compiling 27 files with 0.8.24
+Solc 0.8.24 finished in 4.46s
+Compiler run [32msuccessful![0m
+Analysing contracts...
+Running tests...
+| File                           | % Lines        | % Statements   | % Branches    | % Funcs       |
+|--------------------------------|----------------|----------------|---------------|---------------|
+| script/DeploySocialMedia.s.sol | 100.00% (4/4)  | 100.00% (4/4)  | 100.00% (0/0) | 100.00% (1/1) |
+| src/SocialMedia.sol            | 28.85% (15/52) | 28.07% (16/57) | 100.00% (0/0) | 12.50% (3/24) |
+| Total                          | 33.93% (19/56) | 32.79% (20/61) | 100.00% (0/0) | 16.00% (4/25) |
