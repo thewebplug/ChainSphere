@@ -88,6 +88,7 @@ contract SocialMedia {
     mapping(address postAuthor => mapping(uint256 postId => Comment[])) private postComments; // maps address of the author of post and postId to array of comments
     mapping(address user => Comment[]) private userComments; // maps a user address to array of comments
     uint256 userId;
+    mapping(address userAddress => uint256 userId) private s_userAddressToId;
     
     User[] s_users;
     
@@ -168,7 +169,7 @@ contract SocialMedia {
     function registerUser(string memory _name, string memory _bio, string memory _profileImageHash) public usernameTaken(_name) {
         uint256 id = userId++;
         // For now, this is the way to create a post with empty comments
-         User memory newUser;
+        User memory newUser;
 
         newUser.id = id;
         newUser.userAddress = msg.sender;
@@ -176,7 +177,7 @@ contract SocialMedia {
         newUser.bio = _bio;
         newUser.profileImageHash = _profileImageHash;
         s_addressToUserProfile[msg.sender]=newUser;
-        
+        s_userAddressToId[msg.sender] = id;
 
         s_usernameToAddress[_name] = msg.sender;
 
@@ -186,9 +187,11 @@ contract SocialMedia {
     }
     
     function changeUsername(string memory _newName) public checkUserExists(msg.sender) usernameTaken(_newName) {
-        delete s_usernameToAddress[s_addressToUserProfile[msg.sender].name];
-        s_usernameToAddress[_newName] = msg.sender;
-        s_addressToUserProfile[msg.sender].name = _newName;
+        
+        // get userId using the user address
+        uint256 currentUserId = s_userAddressToId[msg.sender];
+        // change user name using their id
+        s_users[currentUserId].name = _newName;
     }
     
     function createPost(string memory _content, string memory _imgHash) public {

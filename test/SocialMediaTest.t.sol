@@ -50,6 +50,9 @@ contract SocialMediaTest is Test {
     User user;
     Comment comment;
 
+    // Events
+    event UserRegistered(uint256 indexed id, address indexed userAddress, string indexed name);
+
     function setUp() public {
         deployer = new DeploySocialMedia();
         socialMedia = deployer.run();
@@ -60,15 +63,24 @@ contract SocialMediaTest is Test {
     // User Registration Tests //
     /////////////////////////////
 
-    /** Test Passes as expected */
-    function testUserCanRegister() public {
+    /** Modifier */
+    // This Modifier is created since this task will be repeated a couple of times
+    modifier registerOneUser() {
         string memory myName = "Nengak Goltong";
         string memory myBio = "I love to code";
         string memory myImgHash = "";
-        string memory expectedName;
-        string memory expectedBio;
+        
         vm.prank(USER);
         socialMedia.registerUser(myName, myBio, myImgHash);
+        _;
+    }
+
+    /** Test Passes as expected */
+    function testUserCanRegister() public registerOneUser {
+        string memory myName = "Nengak Goltong";
+        string memory myBio = "I love to code";
+        string memory expectedName;
+        string memory expectedBio;
         
         // get name of user from the Blockchain
         expectedName = socialMedia.getUserById(0).name;
@@ -85,4 +97,103 @@ contract SocialMediaTest is Test {
             keccak256(abi.encodePacked(expectedBio))
         );
     }
+
+    // Test reverts as expected. Test passes
+    function testUserCantRegisterIfUsernameAlreadyExists() public registerOneUser{
+        string memory myName = "Nengak Goltong";
+        string memory myBio = "I love to code in Solidity";
+        string memory myImgHash = "";
+        
+        // The test is expected to revert with `SocialMedia__UsernameAlreadyTaken` message since the username is registered already
+        vm.expectRevert(
+            SocialMedia.SocialMedia__UsernameAlreadyTaken.selector
+        );
+        vm.prank(USER);
+        socialMedia.registerUser(myName, myBio, myImgHash);
+    }
+
+    function testEmitsEventAfterUserRegistration() public {
+        string memory myName = "Nengak Goltong";
+        string memory myBio = "I love to code in Solidity";
+        string memory myImgHash = "";
+        
+        vm.expectEmit(true, false, false, false, address(socialMedia));
+        emit UserRegistered(0, USER, myName);
+        vm.prank(USER);
+        socialMedia.registerUser(myName, myBio, myImgHash);
+    }
+
+    //////////////////////////////
+    // Change of Username Tests //
+    //////////////////////////////
+
+    modifier registerThreeUsers() {
+        string[3] memory names = ["Maritji", "Songrit", "Jane"];
+        string memory myBio = "I love to code";
+        string memory myImgHash = "";
+        
+        uint256 len = names.length;
+        uint256 i;
+        // Register the three users using a for loop
+        for(i = 0; i <len; ){
+            address newUser = makeAddr(string(names[i])); 
+            vm.prank(newUser);
+            socialMedia.registerUser(names[i], myBio, myImgHash);
+            unchecked {
+                i++;
+            }
+        }
+        _;
+    }
+
+    function testCantChangeUsernameIfUserDoesNotExist() public registerThreeUsers {
+        // Create a random user
+        address RAN_USER = makeAddr("ran_user");
+        string memory newName = "My New Name";
+
+        // Test is expected to revert since user does not exist on the blockchain
+        vm.expectRevert(
+            SocialMedia.SocialMedia__UserDoesNotExist.selector
+        );
+        vm.prank(RAN_USER);
+        socialMedia.changeUsername(newName);
+
+    }
+
+    function testCantChangeUsernameToAnExistingUsername() public registerThreeUsers {
+        // Create a random user
+        address RAN_USER = makeAddr("Maritji");
+        string memory newName = "Songrit"; // Note that this name exist already on the Blockchain
+
+        // Test is expected to revert since the new username already exists on the blockchain
+        vm.expectRevert(
+            SocialMedia.SocialMedia__UsernameAlreadyTaken.selector
+        );
+        vm.prank(RAN_USER);
+        socialMedia.changeUsername(newName);
+
+    }
+
+    function testCanChangeUsernameWhereAllConditionsAreMet() public registerThreeUsers {
+        // Create a random user
+        address RAN_USER = makeAddr("Maritji");
+        string memory newName = "Pauline"; // Note that this name exist already on the Blockchain
+        string memory expectedName;
+
+        // Test is expected to pass
+        vm.prank(RAN_USER);
+        socialMedia.changeUsername(newName);
+
+        // get name of user from the Blockchain
+        expectedName = socialMedia.getUserById(0).name;
+        console.log("User Name: %s", expectedName);
+
+        assertEq(
+            keccak256(abi.encodePacked(newName)), 
+            keccak256(abi.encodePacked(expectedName))
+        );
+
+    }
+
+
 }
