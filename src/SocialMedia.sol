@@ -168,12 +168,16 @@ contract SocialMedia {
     function registerUser(string memory _name, string memory _bio, string memory _profileImageHash) public usernameTaken(_name) {
         uint256 id = userId++;
         // For now, this is the way to create a post with empty comments
-        User memory newUser = s_addressToUserProfile[msg.sender];
+         User memory newUser;
+
         newUser.id = id;
         newUser.userAddress = msg.sender;
         newUser.name = _name;
         newUser.bio = _bio;
         newUser.profileImageHash = _profileImageHash;
+        s_addressToUserProfile[msg.sender]=newUser;
+        
+
         s_usernameToAddress[_name] = msg.sender;
 
         // Add user to list of users
