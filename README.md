@@ -77,6 +77,18 @@ Next, we go to our `foundry.toml` file and use `remappings` to redirect our impo
 remappings = ["@chainlink/contracts/src/v0.8/vrf=lib/chainlink-brownie-contracts/contracts/src/v0.8"]
 ```
 
+## Link Tokens for Chainlink Subscription
+The `LinkToken.sol` file in `test/mocks` directory was created to enable us fund our subscription. Use the following command to download dependency files for the `LinkToken.sol`
+```bash
+forge install transmissions11/solmate --no-commit
+```
+
+We then edit `remappings` in our `foundry.toml` file to enable us pick the dependency on our local machine without changing the file path on our `LinkToken.sol` file. Our `remappings` now become
+
+```
+remappings = ["@chainlink/contracts/src/v0.8/vrf=lib/chainlink-brownie-contracts/contracts/src/v0.8", "@solmate=lib/solmate/src"]
+```
+
 
 Tasks Carried Out:
 Note that the test script is `SocialMediaTest.t.sol`
