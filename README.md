@@ -89,6 +89,17 @@ We then edit `remappings` in our `foundry.toml` file to enable us pick the depen
 remappings = ["@chainlink/contracts/src/v0.8/vrf=lib/chainlink-brownie-contracts/contracts/src/v0.8", "@solmate=lib/solmate/src"]
 ```
 
+## Install Foundry DevOps
+
+The foundry devOps repo enables us to get the most recent deployment from a given environment in foundry. This way, we can do scripting off previous deployments in solidity.
+```bash
+forge install Cyfrin/foundry-devops --no-commit
+```
+Update your `foundry.toml` to have read permissions on the broadcast folder.
+```
+fs_permissions = [{ access = "read", path = "./broadcast" }]
+```
+
 
 Tasks Carried Out:
 Note that the test script is `SocialMediaTest.t.sol`
