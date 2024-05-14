@@ -65,6 +65,18 @@ $ anvil --help
 $ cast --help
 ```
 
+## Importing from Chainlink
+
+To import dependencies from Chainlink for use in our Contract, we use this command
+```
+forge install smartcontractkit/chainlink-brownie-contracts@0.6.1 --no-commit
+```
+
+Next, we go to our `foundry.toml` file and use `remappings` to redirect our imports to the location of the relevant file imports on our local machine. This is because sometimes, when we download dependencies on our local machine, the file path may vary from what the github repo is. We remap in `foundry.toml` using the following command
+```
+remappings = ["@chainlink/contracts/src/v0.8/vrf=lib/chainlink-brownie-contracts/contracts/src/v0.8"]
+```
+
 
 Tasks Carried Out:
 Note that the test script is `SocialMediaTest.t.sol`
@@ -74,3 +86,11 @@ Note that the test script is `SocialMediaTest.t.sol`
 4. Wrote a test `testRegisteredUserCanCreatePost` to certify that a registered user can create post. The test passed.
 5. Wrote a test `testRegisteredUserCanCreatePost` to certify that a registered user can create post. The test passed.
 6. Improve test coverage from 33% to 49%. Target is for test coverage to be at least 90%
+
+
+Tasks Carried Out:
+Note that the test script is `SocialMediaTest.t.sol`
+1. Introduced the `receive` function in the Smart Contract. This is to enable Smart Contract receive payment from users who want to edit or delete their posts. This feature is introduced to reduce misuse of platform from users.
+2. Introduced the Chainlink Price Feed. This is useful so that for instance, if we peg the fee for deleting of posts as USD5, the Chainlink price feed will enable us know the required amount of ETH or any other asset that is worth 5 dollars using the current price.
+3. Installed the `chainlink-brownie-contracts` to enable us use the chainlink price feed.
+4. Added a `remappings` section in our `foundry.toml` file to ensure our contract can read the dependency files download to our project repository from chainlink-brownie-contracts.

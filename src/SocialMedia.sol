@@ -22,9 +22,13 @@
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.18;
+
+import { PriceConverter } from "./PriceConverter.sol";
 
 contract SocialMedia {
+    using PriceConverter for uint256;
+
     //////////////
     /// Errors ///
     //////////////
@@ -171,6 +175,13 @@ contract SocialMedia {
     /////////////////
     /// Functions ///
     /////////////////
+
+    // The receive function
+    /**
+    * @dev this function enables the Smart Contract to receive payment
+     */
+    receive() external payable {}
+
     function registerUser(string memory _name, string memory _bio, string memory _profileImageHash) public usernameTaken(_name) {
         uint256 id = userId++;
         // For now, this is the way to create a post with empty comments
@@ -228,6 +239,10 @@ contract SocialMedia {
         emit PostCreated(postId, nameOfUser);
     }
     
+    /**
+    * @dev A user should pay to edit post. The rationale is, to ensure users go through their content before posting since editing of content is not free
+    * @notice To effect the payment functionality, we include a receive function to enable the smart contract receive ether. Also, we use Chainlink pricefeed to ensure ether is amount has the required usd equivalent
+     */
     function editPost(uint _postId, string memory _content, string memory _imgHash) public onlyPostOwner(_postId) {
         Post storage post = s_idToPost[_postId];
         post.content = _content;
