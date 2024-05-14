@@ -338,9 +338,6 @@ contract SocialMediaTest is Test {
         address firstUser = socialMedia.getPostById(0).author;
         string memory newContent = "Immaculate Heart of Mary";
         string memory imgHash = "";
-
-        vm.prank(firstUser);
-        socialMedia.editPost{value: EDITING_FEE}(0, newContent, imgHash);
         
         string memory myName = socialMedia.getUserNameFromAddress(firstUser);
 
@@ -350,4 +347,88 @@ contract SocialMediaTest is Test {
         socialMedia.editPost{value: EDITING_FEE}(0, newContent, imgHash);
         
     }
+
+    // Test passes
+    function testContractReceivesPayment() public registerThreeUsersAndPost {
+        address firstUser = socialMedia.getPostById(0).author;
+        string memory newContent = "Immaculate Heart of Mary";
+        string memory imgHash = "";
+
+        vm.prank(firstUser);
+        socialMedia.editPost{value: EDITING_FEE}(0, newContent, imgHash);
+        address owner = socialMedia.getContractOwner();
+        vm.prank(owner);
+        uint256 contractBalance = socialMedia.getBalance();
+        console.log(contractBalance);
+        assertEq(contractBalance, EDITING_FEE);
+    }
+
+    ///////////////////////
+    // Delete Post Tests //
+    ///////////////////////
+
+    // Test reverts as expected - Test passes
+    function testCantDeletePostIfNotTheOwner() public registerThreeUsersAndPost {
+        // Test is expected to revert because we will prank a user to try editing a post of another user
+
+        // Get the address of the author of the first post 
+        address firstUser = socialMedia.getPostById(0).author;
+
+        vm.expectRevert(
+            SocialMedia.SocialMedia__NotPostOwner.selector
+        );
+        vm.prank(firstUser);
+        socialMedia.deletePost(1);
+
+    }
+
+    // Test passes
+    function testOwnerCantDeletePostWithoutPaying() public registerThreeUsersAndPost {
+        // Test is expected to revert because a user will try editing their post without making payment
+
+        // Get the address of the author of the first post 
+        address firstUser = socialMedia.getPostById(0).author;
+
+        vm.expectRevert(
+            SocialMedia.SocialMedia__PaymentNotEnough.selector
+        );
+        vm.prank(firstUser);
+        socialMedia.deletePost(0);
+
+    }
+
+    // Test passes
+    function testOwnerCanDeletePostAfterPaying() public registerThreeUsersAndPost {
+        // Test is expected to pass because a user will pay for editing their post
+
+        // Get the address of the author of the first post 
+        address firstUser = socialMedia.getPostById(0).author;
+
+        vm.prank(firstUser);
+        socialMedia.deletePost{value: EDITING_FEE}(0);
+        
+        string memory retrievedContent = socialMedia.getPostById(0).content;
+        address retrievedAddress = socialMedia.getPostById(0).author;
+        assertEq(
+            keccak256(abi.encodePacked(retrievedContent)),
+            keccak256(abi.encodePacked(""))
+        );
+
+        assertEq(retrievedAddress, address(0));
+    }
+
+    
+    // Test passes
+    function testContractReceivesPaymentWhenPostIsDeleted() public registerThreeUsersAndPost {
+        address firstUser = socialMedia.getPostById(0).author;
+
+        vm.prank(firstUser);
+        socialMedia.deletePost{value: EDITING_FEE}(0);
+        address owner = socialMedia.getContractOwner();
+        vm.prank(owner);
+        uint256 contractBalance = socialMedia.getBalance();
+        console.log(contractBalance);
+        assertEq(contractBalance, EDITING_FEE);
+    }
+
 }
