@@ -117,3 +117,7 @@ Note that the test script is `SocialMediaTest.t.sol`
 2. Introduced the Chainlink Price Feed. This is useful so that for instance, if we peg the fee for deleting of posts as USD5, the Chainlink price feed will enable us know the required amount of ETH or any other asset that is worth 5 dollars using the current price.
 3. Installed the `chainlink-brownie-contracts` to enable us use the chainlink price feed.
 4. Added a `remappings` section in our `foundry.toml` file to ensure our contract can read the dependency files download to our project repository from chainlink-brownie-contracts.
+5. Wrote a test `testCantEditPostIfNotTheOwner` to certify that a user can not edit a post if he is not the author. The test passed.
+6. Wrote a test `testOwnerCantEditPostWithoutPaying` to certify that a user can not edit their post if they don't pay the required amount. The test passed.
+7. Wrote a test `testOwnerCanEditPostAfterPaying` to certify that a user can edit their post if they pay the required amount. The test passed.
+8. Wrote a test `testEventEmitsWhenPostIsEdited` to certify that an event will be emited whenever user edits their post. The test passed.

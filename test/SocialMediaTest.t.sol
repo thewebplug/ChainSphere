@@ -42,6 +42,10 @@ contract SocialMediaTest is Test {
     SocialMedia socialMedia;
     DeploySocialMedia deployer;
 
+    // Constants
+    uint256 private constant STARTING_BALANCE = 10 ether;
+    uint256 private constant EDITING_FEE = 0.004 ether;
+
     // create a fake user
     address USER = makeAddr("user");
 
@@ -53,11 +57,12 @@ contract SocialMediaTest is Test {
     // Events
     event UserRegistered(uint256 indexed id, address indexed userAddress, string indexed name);
     event PostCreated(uint256 postId, string authorName);
+    event PostEdited(uint256 postId, string authorName);
 
     function setUp() public {
         deployer = new DeploySocialMedia();
         socialMedia = deployer.run();
-
+        vm.deal(USER, STARTING_BALANCE);
     }
 
     /////////////////////////////
@@ -213,6 +218,7 @@ contract SocialMediaTest is Test {
         socialMedia.createPost(content, imgHash);
     }
 
+    // Test Passes as expected
     function testRegisteredUserCanCreatePost() public registerOneUser {
         string memory content = "Come and See";
         string memory imgHash = "";
@@ -229,6 +235,7 @@ contract SocialMediaTest is Test {
         );
     }
 
+    // Test Passes as expected
     function testEventEmitsWhenPostIsCreated() public registerOneUser {
         string memory content = "Come and See";
         string memory imgHash = "";
@@ -238,6 +245,109 @@ contract SocialMediaTest is Test {
         emit PostCreated(0, myName);
         vm.prank(USER);
         socialMedia.createPost(content, imgHash);
+        
+    }
+
+    /////////////////////
+    // Edit Post Tests //
+    /////////////////////
+
+    modifier registerThreeUsersAndPost() {
+        string[3] memory names = ["Maritji", "Songrit", "Jane"];
+        string memory myBio = "I love to code";
+        string memory myImgHash = "";
+        string memory myContent = "Come and See";
+        
+        uint256 len = names.length;
+        uint256 i;
+        // Register the three users using a for loop
+        for(i = 0; i <len; ){
+            // Create a fake user and assign them a starting balance
+            // hoax(address(i), STARTING_BALANCE);
+            address newUser = makeAddr(string(names[i])); 
+            vm.deal(newUser, STARTING_BALANCE);
+            vm.startPrank(newUser);
+            // register newUser
+            socialMedia.registerUser(names[i], myBio, myImgHash);
+            // newUser makes a post
+            socialMedia.createPost(myContent, myImgHash);
+            vm.stopPrank();
+            unchecked {
+                i++;
+            }
+        }
+        _;
+    }
+
+    // Test reverts as expected - Test passes
+    function testCantEditPostIfNotTheOwner() public registerThreeUsersAndPost {
+        // Test is expected to revert because we will prank a user to try editing a post of another user
+
+        // Get the address of the author of the first post 
+        address firstUser = socialMedia.getPostById(0).author;
+        string memory newContent = "Immaculate Heart of Mary";
+        string memory imgHash = "";
+
+        vm.expectRevert(
+            SocialMedia.SocialMedia__NotPostOwner.selector
+        );
+        vm.prank(firstUser);
+        socialMedia.editPost(1, newContent, imgHash);
+
+    }
+
+    // Test passes
+    function testOwnerCantEditPostWithoutPaying() public registerThreeUsersAndPost {
+        // Test is expected to revert because a user will try editing their post without making payment
+
+        // Get the address of the author of the first post 
+        address firstUser = socialMedia.getPostById(0).author;
+        string memory newContent = "Immaculate Heart of Mary";
+        string memory imgHash = "";
+
+        vm.expectRevert(
+            SocialMedia.SocialMedia__PaymentNotEnough.selector
+        );
+        vm.prank(firstUser);
+        socialMedia.editPost(0, newContent, imgHash);
+
+    }
+
+    // Test passes
+    function testOwnerCanEditPostAfterPaying() public registerThreeUsersAndPost {
+        // Test is expected to pass because a user will pay for editing their post
+
+        // Get the address of the author of the first post 
+        address firstUser = socialMedia.getPostById(0).author;
+        string memory newContent = "Immaculate Heart of Mary";
+        string memory imgHash = "";
+
+        vm.prank(firstUser);
+        socialMedia.editPost{value: EDITING_FEE}(0, newContent, imgHash);
+        
+        string memory retrievedContent = socialMedia.getPostById(0).content;
+        assertEq(
+            keccak256(abi.encodePacked(retrievedContent)),
+            keccak256(abi.encodePacked(newContent))
+        );
+
+    }
+
+    // Test Passes as expected
+    function testEventEmitsWhenPostIsEdited() public registerThreeUsersAndPost {
+        address firstUser = socialMedia.getPostById(0).author;
+        string memory newContent = "Immaculate Heart of Mary";
+        string memory imgHash = "";
+
+        vm.prank(firstUser);
+        socialMedia.editPost{value: EDITING_FEE}(0, newContent, imgHash);
+        
+        string memory myName = socialMedia.getUserNameFromAddress(firstUser);
+
+        vm.expectEmit(true, false, false, false, address(socialMedia));
+        emit PostEdited(0, myName);
+        vm.prank(firstUser);
+        socialMedia.editPost{value: EDITING_FEE}(0, newContent, imgHash);
         
     }
 }
