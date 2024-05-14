@@ -74,8 +74,11 @@ contract SocialMedia {
 
     // Mappings
     mapping(address userAddress => User) private s_addressToUserProfile;
-    mapping(uint256 postId => Post) private s_posts;
+    mapping(uint256 postId => Post) private s_idToPost;
     mapping(uint256 commentId => Comment) private s_comments;
+
+    // Map every post to the author using the postId
+    mapping(address userAddress => uint256 postId) private s_userAddressToPostId;
     
     /* For gas efficiency, we declare variables as private and define getter functions for them where necessary */
     address private owner; // would have made this variable immutable but for the changeOwner function in the contract
@@ -90,7 +93,9 @@ contract SocialMedia {
     uint256 userId;
     mapping(address userAddress => uint256 userId) private s_userAddressToId;
     
-    User[] s_users;
+    User[] s_users; // array of users
+    Post[] s_posts; // array of posts
+
     
     //////////////
     /// Events ///
@@ -115,7 +120,7 @@ contract SocialMedia {
     }
     
     modifier onlyPostOwner(uint _postId) {
-        if(msg.sender != s_posts[_postId].author){
+        if(msg.sender != s_idToPost[_postId].author){
             revert SocialMedia__NotPostOwner();
         }
         _;
@@ -143,7 +148,7 @@ contract SocialMedia {
     }
     
     modifier notOwner(uint256 _postId) {
-        if(msg.sender == s_posts[_postId].author){
+        if(msg.sender == s_idToPost[_postId].author){
             revert SocialMedia__OwnerCannotVote();
         }
         _;
@@ -194,10 +199,14 @@ contract SocialMedia {
         s_users[currentUserId].name = _newName;
     }
     
-    function createPost(string memory _content, string memory _imgHash) public {
-        uint256 postId = userPosts[msg.sender].length;
-        // For now, this is the way to create a post with empty comments
-
+    /**
+    * only a registered user can create posts on the platform
+     */
+    function createPost(string memory _content, string memory _imgHash) public checkUserExists(msg.sender) {
+        // generate id's for posts in a serial manner
+        uint256 postId = s_posts.length;
+        
+        // Initialize an instance of a post for the user
         Post memory newPost = Post({
             postId: postId,
             content: _content,
@@ -209,31 +218,36 @@ contract SocialMedia {
         });
 
         string memory nameOfUser = getUserNameFromAddress(msg.sender);
-        emit PostCreated(postId, nameOfUser);
+        
         // Add the post to userPosts
         userPosts[msg.sender].push(newPost);
+        // Add the post to the array of posts
+        s_posts.push(newPost);
+        // map post to the author
+        s_userAddressToPostId[msg.sender] = postId;
+        emit PostCreated(postId, nameOfUser);
     }
     
     function editPost(uint _postId, string memory _content, string memory _imgHash) public onlyPostOwner(_postId) {
-        Post storage post = s_posts[_postId];
+        Post storage post = s_idToPost[_postId];
         post.content = _content;
         post.imgHash = _imgHash;
         emit PostEdited(_postId, msg.sender);
     }
     
     function deletePost(uint _postId) public onlyPostOwner(_postId) {
-        delete s_posts[_postId];
+        delete s_idToPost[_postId];
     }
     
     function upvote(uint _postId) public notOwner(_postId) hasNotVoted(_postId) {
-        s_posts[_postId].upvotes++;
+        s_idToPost[_postId].upvotes++;
         s_hasVoted[msg.sender][_postId] = true;
         s_voters.push(msg.sender);
         emit Upvoted(_postId, msg.sender);
     }
     
     function downvote(uint _postId) public notOwner(_postId) hasNotVoted(_postId) {
-        s_posts[_postId].downvotes++;
+        s_idToPost[_postId].downvotes++;
         s_hasVoted[msg.sender][_postId] = true;
         s_voters.push(msg.sender);
         emit Downvoted(_postId, msg.sender);
@@ -288,6 +302,10 @@ contract SocialMedia {
 
     function getUserById(uint256 _userId) public view returns(User memory) {
         return s_users[_userId];
+    }
+
+    function getPostById(uint256 _postId) public view returns(Post memory) {
+        return s_posts[_postId];
     }
 
     function getUserComments(address _userAddress) public view returns(Comment[] memory) {

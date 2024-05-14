@@ -68,10 +68,9 @@ $ cast --help
 
 Tasks Carried Out:
 Note that the test script is `SocialMediaTest.t.sol`
-1. Created a modifier in the test file called `registerOneUser`. This is to make the code for testing modular and to avoid unnecessary repetition.
-2. Wrote a function `testUserCantRegisterIfUsernameAlreadyExists` in the test file to test the assertion that a user can not register if the username already exists. The test reverts as expected - Test passes.
-3. Wrote a function `testEmitsEventAfterUserRegistration` in the test file to test the assertion that the `UserRegistered` event will be emited after a user is registered successfully. The Test passes.
-4. Wrote a function `testCantChangeUsernameIfUserDoesNotExist` in the test file to test the assertion that a user cannot change username if user does not exist. The Test passes.
-5. Made some changes to the `changerUsername` function in the Smart Contract so that user information is accessed using userId and hereafter, change the username to a new name.
-6. Wrote a function `testCanChangeUsernameWhereAllConditionsAreMet` in the test file to test the assertion that a user can change their username if all conditions are satisfied. The Test passes.
-7. Added a snapshot of test coverage so far.
+1. Modified the `createPost` function to allow only registered users create a post.
+2. Wrote a test `testUserCantCreatePostIfNotRegistered` to certify that a user can not create post if not registered. The test reverts as expected - test passed.
+3. Created a mapping `s_userAddressToPostId` which maps every post to the author of that post. 
+4. Wrote a test `testRegisteredUserCanCreatePost` to certify that a registered user can create post. The test passed.
+5. Wrote a test `testRegisteredUserCanCreatePost` to certify that a registered user can create post. The test passed.
+6. Improve test coverage from 33% to 49%. Target is for test coverage to be at least 90%
