@@ -52,6 +52,7 @@ contract SocialMediaTest is Test {
 
     // Events
     event UserRegistered(uint256 indexed id, address indexed userAddress, string indexed name);
+    event PostCreated(uint256 postId, string authorName);
 
     function setUp() public {
         deployer = new DeploySocialMedia();
@@ -195,5 +196,48 @@ contract SocialMediaTest is Test {
 
     }
 
+    ///////////////////////
+    // Create Post Tests //
+    ///////////////////////
 
+    // Test Passes as expected
+    function testUserCantCreatePostIfNotRegistered() public {
+        string memory content = "Come and See";
+        string memory imgHash = "";
+
+        // Note that USER has not registered and as such, we expect test to revert
+        vm.expectRevert(
+            SocialMedia.SocialMedia__UserDoesNotExist.selector
+        );
+        vm.prank(USER);
+        socialMedia.createPost(content, imgHash);
+    }
+
+    function testRegisteredUserCanCreatePost() public registerOneUser {
+        string memory content = "Come and See";
+        string memory imgHash = "";
+
+        vm.prank(USER);
+        socialMedia.createPost(content, imgHash);
+        console.log(socialMedia.getPostById(0).content);
+        // retrieve content from the blockchain
+        string memory retrievedContent = socialMedia.getPostById(0).content;
+        
+        assertEq(
+            keccak256(abi.encodePacked(retrievedContent)),
+            keccak256(abi.encodePacked(content))
+        );
+    }
+
+    function testEventEmitsWhenPostIsCreated() public registerOneUser {
+        string memory content = "Come and See";
+        string memory imgHash = "";
+        string memory myName = socialMedia.getUserNameFromAddress(USER);
+
+        vm.expectEmit(true, false, false, false, address(socialMedia));
+        emit PostCreated(0, myName);
+        vm.prank(USER);
+        socialMedia.createPost(content, imgHash);
+        
+    }
 }
