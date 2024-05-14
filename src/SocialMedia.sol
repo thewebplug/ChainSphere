@@ -25,6 +25,8 @@
 pragma solidity ^0.8.18;
 
 import { PriceConverter } from "./PriceConverter.sol";
+import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
 
 contract SocialMedia {
     using PriceConverter for uint256;
@@ -39,6 +41,7 @@ contract SocialMedia {
     error SocialMedia__UserDoesNotExist();
     error SocialMedia__OwnerCannotVote();
     error SocialMedia__AlreadyVoted(); 
+    error SocialMedia__PaymentNotEnough();
     
     ///////////////////////////////////
     /// Type Declarations (Structs) ///
@@ -76,6 +79,12 @@ contract SocialMedia {
     /// State Variables ///
     ///////////////////////
 
+    // Imported Variables
+    AggregatorV3Interface private s_priceFeed;
+
+    // Constants
+    uint256 private constant MINIMUM_USD = 5e18;
+
     // Mappings
     mapping(address userAddress => User) private s_addressToUserProfile;
     mapping(uint256 postId => Post) private s_idToPost;
@@ -83,7 +92,9 @@ contract SocialMedia {
 
     // Map every post to the author using the postId
     mapping(address userAddress => uint256 postId) private s_userAddressToPostId;
+    mapping(uint256 postId => address author) private s_postIdToAuthor;
     
+
     /* For gas efficiency, we declare variables as private and define getter functions for them where necessary */
     address private owner; // would have made this variable immutable but for the changeOwner function in the contract
     mapping(string name => address userAddress) private s_usernameToAddress;
@@ -107,7 +118,7 @@ contract SocialMedia {
 
     event UserRegistered(uint256 indexed id, address indexed userAddress, string indexed name);
     event PostCreated(uint256 postId, string authorName);
-    event PostEdited(uint256 postId, address author);
+    event PostEdited(uint256 postId, string authorName);
     event CommentCreated(uint256 indexed commentId, address indexed postAuthor, address indexed commentAuthor, uint256 postId);
     event PostLiked(uint256 indexed postId, address indexed postAuthor, address indexed liker);
     event Upvoted(uint256 postId, address voter);
@@ -124,7 +135,7 @@ contract SocialMedia {
     }
     
     modifier onlyPostOwner(uint _postId) {
-        if(msg.sender != s_idToPost[_postId].author){
+        if(msg.sender !=  s_postIdToAuthor[_postId]){
             revert SocialMedia__NotPostOwner();
         }
         _;
@@ -165,11 +176,18 @@ contract SocialMedia {
         _;
     }
     
+    modifier hasPaid() {
+        if(msg.value.getConversionRate(s_priceFeed) < MINIMUM_USD){
+            revert SocialMedia__PaymentNotEnough();
+        }
+        _;
+    }
     ///////////////////
     /// Constructor ///
     ///////////////////
-    constructor() {
+    constructor(address priceFeed) {
         owner = msg.sender;
+        s_priceFeed = AggregatorV3Interface(priceFeed);
     }
     
     /////////////////
@@ -236,6 +254,7 @@ contract SocialMedia {
         s_posts.push(newPost);
         // map post to the author
         s_userAddressToPostId[msg.sender] = postId;
+        s_postIdToAuthor[postId] = msg.sender;
         emit PostCreated(postId, nameOfUser);
     }
     
@@ -243,11 +262,12 @@ contract SocialMedia {
     * @dev A user should pay to edit post. The rationale is, to ensure users go through their content before posting since editing of content is not free
     * @notice To effect the payment functionality, we include a receive function to enable the smart contract receive ether. Also, we use Chainlink pricefeed to ensure ether is amount has the required usd equivalent
      */
-    function editPost(uint _postId, string memory _content, string memory _imgHash) public onlyPostOwner(_postId) {
-        Post storage post = s_idToPost[_postId];
-        post.content = _content;
-        post.imgHash = _imgHash;
-        emit PostEdited(_postId, msg.sender);
+    function editPost(uint _postId, string memory _content, string memory _imgHash) public payable onlyPostOwner(_postId) hasPaid {
+        
+        s_posts[_postId].content = _content;
+        s_posts[_postId].imgHash = _imgHash;
+        string memory nameOfUser = getUserNameFromAddress(msg.sender);
+        emit PostEdited(_postId, nameOfUser);
     }
     
     function deletePost(uint _postId) public onlyPostOwner(_postId) {
