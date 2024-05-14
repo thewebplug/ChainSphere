@@ -121,3 +121,12 @@ Note that the test script is `SocialMediaTest.t.sol`
 6. Wrote a test `testOwnerCantEditPostWithoutPaying` to certify that a user can not edit their post if they don't pay the required amount. The test passed.
 7. Wrote a test `testOwnerCanEditPostAfterPaying` to certify that a user can edit their post if they pay the required amount. The test passed.
 8. Wrote a test `testEventEmitsWhenPostIsEdited` to certify that an event will be emited whenever user edits their post. The test passed.
+
+
+Tasks Carried Out:
+Note that the test script is `SocialMediaTest.t.sol`
+1. Wrote a test `testContractReceivesPayment` to certify that the Contract actually receives payment from users. The test passed.
+2. Modified the `deletePost` function to actually delete post. In addition, users have to pay to delete any post.
+3. Wrote a test `testCantDeletePostIfNotTheOwner` to certify that a user can not delete a post if he is not the author. The test passed.
+4. Wrote a test `testOwnerCantDeletePostWithoutPaying` to certify that a user can not delete their post if they don't pay the required amount. The test passed.
+5. Wrote a test `testOwnerCanDeletePostAfterPaying` to certify that a user can delete their post if they pay the required amount. The test passed.

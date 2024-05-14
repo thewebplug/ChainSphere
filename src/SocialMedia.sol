@@ -96,7 +96,7 @@ contract SocialMedia {
     
 
     /* For gas efficiency, we declare variables as private and define getter functions for them where necessary */
-    address private owner; // would have made this variable immutable but for the changeOwner function in the contract
+    address private s_owner; // would have made this variable immutable but for the changes_Owner function in the contract
     mapping(string name => address userAddress) private s_usernameToAddress;
     address[] private s_voters;
     mapping(address user => mapping(uint256 postId => bool voteStatus)) private s_hasVoted; //Checks if a user has voted or not
@@ -128,7 +128,7 @@ contract SocialMedia {
     /// Modifiers ///
     /////////////////
     modifier onlyOwner() {
-        if(msg.sender != owner){
+        if(msg.sender != s_owner){
             revert SocialMedia__NotOwner();
         }
         _;
@@ -186,7 +186,7 @@ contract SocialMedia {
     /// Constructor ///
     ///////////////////
     constructor(address priceFeed) {
-        owner = msg.sender;
+        s_owner = msg.sender;
         s_priceFeed = AggregatorV3Interface(priceFeed);
     }
     
@@ -270,8 +270,10 @@ contract SocialMedia {
         emit PostEdited(_postId, nameOfUser);
     }
     
-    function deletePost(uint _postId) public onlyPostOwner(_postId) {
-        delete s_idToPost[_postId];
+    function deletePost(uint _postId) public payable onlyPostOwner(_postId) hasPaid {
+        // delete the content of post by 
+        s_posts[_postId].content = "";
+        s_posts[_postId].author = address(0);
     }
     
     function upvote(uint _postId) public notOwner(_postId) hasNotVoted(_postId) {
@@ -357,6 +359,9 @@ contract SocialMedia {
         return address(this).balance;
     }
     
+    function getContractOwner() public view returns(address){
+        return s_owner;
+    }
 
     function transferContractBalance(address payable _to) public onlyOwner {
         _to.transfer(address(this).balance);
@@ -371,7 +376,7 @@ contract SocialMedia {
     }
     
     function changeOwner(address _newOwner) public onlyOwner {
-        owner = _newOwner;
+        s_owner = _newOwner;
     }
     
     // Internal functions
