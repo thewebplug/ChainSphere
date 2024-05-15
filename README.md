@@ -193,3 +193,4 @@ Note that the test script is `SocialMediaTest.t.sol`
 2. Wrote a test `testCantEditCommenttIfNotTheOwner` to certify that a user cannot edit a comment for which they are not the author. The test reverted as expected - test passed.
 3. Wrote a test `testOwnerCantEditCommentWithoutPaying` to certify that a user cannot edit their comment without paying. The test reverted as expected - test passed.
 4. Wrote a test `testOwnerCanEditCommentAfterPaying` to certify that a user can edit their comment if they are paying for it. The test passed.
+5. Test coverage improved from 84% to 87%
