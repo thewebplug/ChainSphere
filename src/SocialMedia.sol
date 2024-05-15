@@ -400,17 +400,5 @@ contract SocialMedia {
     
     // Internal functions
     function generateUserId() internal pure returns(uint) {
-        // Implementation to generate unique user IDs
-        return 1;
-    }
-    
-    function generatePostId() internal pure returns(uint) {
-        // Implementation to generate unique post IDs
-        return 1;
-    }
-    
-    function generateCommentId() internal  pure returns(uint) {
-        // Implementation to generate unique comment IDs
-        return 1;
-    }
+ 
 }
