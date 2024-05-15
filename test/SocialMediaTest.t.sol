@@ -657,4 +657,85 @@ contract SocialMediaTest is Test {
         vm.prank(firstUser);
         socialMedia.createComment(1, content);
     }   
+
+    ////////////////////////
+    // Edit Comment Tests //
+    ////////////////////////
+
+    
+    // Test reverts as expected - Test passes
+    function testCantEditCommenttIfNotTheOwner() public registerThreeUsersAndPost {
+        // Test is expected to revert because we will prank a user to try editing a comment of another user
+
+        // Get the address of the author of the first post 
+        address firstUser = socialMedia.getPostById(0).author;
+        string memory content = "Praise God";
+        string memory newContent = "For He is good";
+
+        vm.prank(firstUser);
+        socialMedia.createComment(0, content); // user 0 comments on their post 
+
+        vm.expectRevert(
+            SocialMedia.SocialMedia__NotCommentOwner.selector
+        );
+        vm.prank(USER);
+        socialMedia.editComment(0, 0, newContent);
+
+    }
+
+    // Test passes
+    function testOwnerCantEditCommentWithoutPaying() public registerThreeUsersAndPost {
+        // Test is expected to revert because a user will try editing their comment without making payment
+
+        // Get the address of the author of the first post 
+        address firstUser = socialMedia.getPostById(0).author;
+        string memory content = "Praise God";
+        string memory newContent = "For He is good";
+
+        vm.prank(firstUser);
+        socialMedia.createComment(0, content); // user 0 comments on their post 
+
+        vm.expectRevert(
+            SocialMedia.SocialMedia__PaymentNotEnough.selector
+        );
+        vm.prank(firstUser);
+        socialMedia.editComment(0, 0, newContent);
+    }
+
+    // Test passes
+    function testOwnerCanEditCommentAfterPaying() public registerThreeUsersAndPost {
+        // Test is expected to pass because a user will pay for editing their post
+
+        // Get the address of the author of the first post 
+        address firstUser = socialMedia.getPostById(0).author;
+        string memory content = "Praise God";
+        string memory newContent = "For He is good";
+
+        vm.startPrank(firstUser);
+        socialMedia.createComment(0, content); // user 0 comments on their post 
+        socialMedia.editComment{value: EDITING_FEE}(0, 0, newContent);
+        vm.stopPrank();
+
+        string memory retrievedComment = socialMedia.getCommentByPostIdAndCommentId(0,0).content;
+        assertEq(
+            keccak256(abi.encodePacked(retrievedComment)),
+            keccak256(abi.encodePacked(newContent))
+        );
+
+    }
+
+    // // Test Passes as expected
+    // function testEventEmitsWhenPostIsEdited() public registerThreeUsersAndPost {
+    //     address firstUser = socialMedia.getPostById(0).author;
+    //     string memory newContent = "Immaculate Heart of Mary";
+    //     string memory imgHash = "";
+        
+    //     string memory myName = socialMedia.getUserNameFromAddress(firstUser);
+
+    //     vm.expectEmit(true, false, false, false, address(socialMedia));
+    //     emit PostEdited(0, myName);
+    //     vm.prank(firstUser);
+    //     socialMedia.editPost{value: EDITING_FEE}(0, newContent, imgHash);
+        
+    // }
 }

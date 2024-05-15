@@ -184,3 +184,12 @@ Note that the test script is `SocialMediaTest.t.sol`
 4. Wrote a test `testRegisteredUserCanCreateComment` to certify that a registered user can comment on a post. The test passed.
 5. Wrote a test `testEventEmitsWhenCommentIsCreated` to certify that an event emits any time a comment is created. The test passed.
 6. Test coverage improved from 75% to 84%
+
+
+
+Tasks Carried Out:
+Note that the test script is `SocialMediaTest.t.sol`
+1. Modified the `editComment` function which now takes `postId` and `commentId` as arguments. 
+2. Wrote a test `testCantEditCommenttIfNotTheOwner` to certify that a user cannot edit a comment for which they are not the author. The test reverted as expected - test passed.
+3. Wrote a test `testOwnerCantEditCommentWithoutPaying` to certify that a user cannot edit their comment without paying. The test reverted as expected - test passed.
+4. Wrote a test `testOwnerCanEditCommentAfterPaying` to certify that a user can edit their comment if they are paying for it. The test passed.
