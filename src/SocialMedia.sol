@@ -98,7 +98,7 @@ contract SocialMedia {
     /* For gas efficiency, we declare variables as private and define getter functions for them where necessary */
     address private s_owner; // would have made this variable immutable but for the changes_Owner function in the contract
     mapping(string name => address userAddress) private s_usernameToAddress;
-    address[] private s_voters;
+    // address[] private s_voters;
     mapping(address user => mapping(uint256 postId => bool voteStatus)) private s_hasVoted; //Checks if a user has voted or not
     // Comment[] commentsArray;
     // Post[] postsArray;
@@ -121,8 +121,8 @@ contract SocialMedia {
     event PostEdited(uint256 postId, string authorName);
     event CommentCreated(uint256 indexed commentId, address indexed postAuthor, address indexed commentAuthor, uint256 postId);
     event PostLiked(uint256 indexed postId, address indexed postAuthor, address indexed liker);
-    event Upvoted(uint256 postId, address voter);
-    event Downvoted(uint256 postId, address voter);
+    event Upvoted(uint256 postId, string posthAuthorName, string upvoterName);
+    event Downvoted(uint256 postId, string posthAuthorName, string downvoterName);
     
     /////////////////
     /// Modifiers ///
@@ -163,7 +163,7 @@ contract SocialMedia {
     }
     
     modifier notOwner(uint256 _postId) {
-        if(msg.sender == s_idToPost[_postId].author){
+        if(msg.sender == s_postIdToAuthor[_postId]){
             revert SocialMedia__OwnerCannotVote();
         }
         _;
@@ -277,17 +277,24 @@ contract SocialMedia {
     }
     
     function upvote(uint _postId) public notOwner(_postId) hasNotVoted(_postId) {
-        s_idToPost[_postId].upvotes++;
+        s_posts[_postId].upvotes++;
         s_hasVoted[msg.sender][_postId] = true;
-        s_voters.push(msg.sender);
-        emit Upvoted(_postId, msg.sender);
+        // s_voters.push(msg.sender);
+        address postAuthAddress = s_postIdToAuthor[_postId];
+        string memory postAuthorName = getUserNameFromAddress(postAuthAddress);
+        string memory upvoter = getUserNameFromAddress(msg.sender);
+        emit Upvoted(_postId, postAuthorName, upvoter);
     }
     
     function downvote(uint _postId) public notOwner(_postId) hasNotVoted(_postId) {
         s_idToPost[_postId].downvotes++;
         s_hasVoted[msg.sender][_postId] = true;
-        s_voters.push(msg.sender);
-        emit Downvoted(_postId, msg.sender);
+        // s_voters.push(msg.sender);
+        address postAuthAddress = s_postIdToAuthor[_postId];
+        string memory postAuthorName = getUserNameFromAddress(postAuthAddress);
+        string memory downvoterName = getUserNameFromAddress(msg.sender);
+        emit Downvoted(_postId, postAuthorName, downvoterName);
+        
     }
     
     /** Deleted the function that used a for loop to determine

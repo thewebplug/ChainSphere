@@ -58,6 +58,9 @@ contract SocialMediaTest is Test {
     event UserRegistered(uint256 indexed id, address indexed userAddress, string indexed name);
     event PostCreated(uint256 postId, string authorName);
     event PostEdited(uint256 postId, string authorName);
+    event Upvoted(uint256 postId, string posthAuthorName, string upvoterName);
+    event Downvoted(uint256 postId, string posthAuthorName, string downvoterName);
+    
 
     function setUp() public {
         deployer = new DeploySocialMedia();
@@ -429,6 +432,76 @@ contract SocialMediaTest is Test {
         uint256 contractBalance = socialMedia.getBalance();
         console.log(contractBalance);
         assertEq(contractBalance, EDITING_FEE);
+    }
+
+    //////////////////
+    // Upvote Tests //
+    //////////////////
+
+    function testUserCantUpvotePostIfTheyAreTheOwner() public registerThreeUsersAndPost{
+        // Test is expected to revert since no one can upvote their post
+        address firstUser = socialMedia.getPostById(0).author;
+
+        vm.expectRevert(
+            SocialMedia.SocialMedia__OwnerCannotVote.selector
+        );
+        vm.prank(firstUser);
+        socialMedia.upvote(0);
+    }
+
+    function testUserCanUpvotePostIfTheyAreNotTheOwner() public registerThreeUsersAndPost{
+        address firstUser = socialMedia.getPostById(0).author;
+
+        vm.prank(firstUser);
+        socialMedia.upvote(1);
+        uint256 numUpvotes = socialMedia.getPostById(1).upvotes;
+        uint256 expectedUpvotes = 1;
+        assertEq(numUpvotes, expectedUpvotes);
+    }
+
+    function testUserCantUpvoteSamePostMoreThanOnce() public registerThreeUsersAndPost{
+        // Test is expected to revert since no one can upvote their post
+        address firstUser = socialMedia.getPostById(0).author;
+
+        vm.prank(firstUser);
+        socialMedia.upvote(1); //cast upvote first time
+        vm.expectRevert(
+            SocialMedia.SocialMedia__AlreadyVoted.selector
+        );
+        vm.prank(firstUser);
+        socialMedia.upvote(1); // cast upvote for the second time on the same post
+    }
+
+    // Test passed
+    function testUserCanUpvoteMultiplePostsIfTheyAreNotTheOwner() public registerThreeUsersAndPost{
+        address firstUser = socialMedia.getPostById(0).author;
+
+        vm.startPrank(firstUser);
+        socialMedia.upvote(1);
+        socialMedia.upvote(2);
+        vm.stopPrank();
+
+        uint256 num1Upvotes = socialMedia.getPostById(1).upvotes;
+        uint256 num2Upvotes = socialMedia.getPostById(2).upvotes;
+        uint256 expectedUpvotes = 1;
+        assertEq(num1Upvotes, expectedUpvotes);
+        assertEq(num2Upvotes, expectedUpvotes);
+    }
+
+    function testEmitsEventWhenPostGetsAnUpvote() public registerThreeUsersAndPost{
+        address upvoter = socialMedia.getPostById(0).author;
+        address postAuthor = socialMedia.getPostById(1).author;
+
+        string memory voterName = socialMedia.getUserNameFromAddress(upvoter);
+        string memory postAuthorName = socialMedia.getUserNameFromAddress(postAuthor);
+
+        vm.expectEmit(true, false, false, false, address(socialMedia));
+        emit Upvoted(1, postAuthorName, voterName);
+        
+        vm.startPrank(upvoter);
+        socialMedia.upvote(1);
+        vm.stopPrank();
+        
     }
 
 }
