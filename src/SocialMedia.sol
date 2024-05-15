@@ -287,7 +287,7 @@ contract SocialMedia {
     }
     
     function downvote(uint _postId) public notOwner(_postId) hasNotVoted(_postId) {
-        s_idToPost[_postId].downvotes++;
+        s_posts[_postId].downvotes++;
         s_hasVoted[msg.sender][_postId] = true;
         // s_voters.push(msg.sender);
         address postAuthAddress = s_postIdToAuthor[_postId];
