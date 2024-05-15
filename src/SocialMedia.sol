@@ -386,13 +386,7 @@ contract SocialMedia {
         _to.transfer(address(this).balance);
     }
     
-    function stopDapp() public onlyOwner {
-        // Implement to stop the Dapp
-    }
-    
-    function startDapp() public onlyOwner {
-        // Implement to start the Dapp
-    }
+  
     
     function changeOwner(address _newOwner) public onlyOwner {
         s_owner = _newOwner;
