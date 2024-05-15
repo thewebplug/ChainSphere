@@ -105,6 +105,7 @@ contract SocialMedia {
     mapping(address user => Post[]) private userPosts; // maps a user address to array of posts
     mapping(address postAuthor => mapping(uint256 postId => Comment[])) private postComments; // maps address of the author of post and postId to array of comments
     mapping(uint256 postId => Comment[]) private s_postIdToComments; // maps  postId to its array of comments
+    mapping(uint256 postId => mapping(uint256 commentId => address commenterAddress)) private s_postAndCommentIdToAddress; // maps  postId and commentId to commenter
     mapping(address user => Comment[]) private userComments; // maps a user address to array of comments
     uint256 userId;
     mapping(address userAddress => uint256 userId) private s_userAddressToId;
@@ -142,8 +143,8 @@ contract SocialMedia {
         _;
     }
     
-    modifier onlyCommentOwner(uint _commentId) {
-        if(msg.sender != s_comments[_commentId].author){
+    modifier onlyCommentOwner(uint256 _postId, uint256 _commentId) {
+        if(msg.sender != s_postAndCommentIdToAddress[_postId][_commentId]){
             revert SocialMedia__NotCommentOwner();
         }
         _;
@@ -319,19 +320,23 @@ contract SocialMedia {
         string memory postAuthor = getUserById(_postId).name;
         string memory commenter = getUserNameFromAddress(msg.sender);
 
-        // postComments[postAuthor][_postId].push(newComment);
+        s_postAndCommentIdToAddress[_postId][commentId] = msg.sender;
         s_postIdToComments[_postId].push(newComment);
 
         emit CommentCreated(commentId, postAuthor, commenter, _postId);
     }
     
-    function editComment(uint256 _commentId, string memory _content) public onlyCommentOwner(_commentId) {
-        Comment storage comment = s_comments[_commentId];
-        comment.content = _content;
+    /**
+    * @dev only the user who created a comment should be able to edit it. Also, a user should pay to edit their post
+     */
+    function editComment(uint256 _postId, uint256 _commentId, string memory _content) public payable onlyCommentOwner(_postId, _commentId) hasPaid {
+        // get the comment from the Blockchain (call by reference) and update it
+        s_postIdToComments[_postId][_commentId].content = _content;
+        
     }
     
-    function deleteComment(uint _commentId) public onlyCommentOwner(_commentId) {
-        delete s_comments[_commentId];
+    function deleteComment(uint256 _postId, uint256 _commentId) public payable onlyCommentOwner(_postId, _commentId) {
+        // delete s_comments[_commentId];
     }
     
     function likeComment(uint _commentId) public {
