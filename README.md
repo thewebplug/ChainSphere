@@ -130,3 +130,15 @@ Note that the test script is `SocialMediaTest.t.sol`
 3. Wrote a test `testCantDeletePostIfNotTheOwner` to certify that a user can not delete a post if he is not the author. The test passed.
 4. Wrote a test `testOwnerCantDeletePostWithoutPaying` to certify that a user can not delete their post if they don't pay the required amount. The test passed.
 5. Wrote a test `testOwnerCanDeletePostAfterPaying` to certify that a user can delete their post if they pay the required amount. The test passed.
+
+
+Tasks Carried Out:
+Note that the test script is `SocialMediaTest.t.sol`
+1. Modified the `notOwner` modifier to check if `msg.sender` is the caller of a function by using the `s_postIdToAuthor` mapping to get the address of the author of any post using the postId.
+2. Wrote a test `testUserCantUpvotePostIfTheyAreTheOwner` to certify that a user cannot cast an upvote to any post for which they are the author. The test reverted as expected - test passed.
+3. Modified the `upvote` function so that it increases the number of upvotes by 1 whenever it is called.
+4. Wrote a test `testUserCanUpvotePostIfTheyAreNotTheOwner` to certify that a user can cast an upvote to any post for which they are not the author. The test passed.
+5. Wrote a test `testUserCantUpvoteSamePostMoreThanOnce` to certify that a user cannot cast more than one upvote to any post. The test reverted as expected - test passed.
+6. Wrote a test `testUserCanUpvoteMultiplePostsIfTheyAreNotTheOwner` to certify that a user cannot cast one upvote to multiple posts. The test passed.
+7. Modified the `Upvoted` and `Downvoted` events to emit names of voters rather than addresses
+8. Wrote a test `testEmitsEventWhenPostGetsAnUpvote` to certify that an event is emitted whenever a post gets an upvote. The test passed.
