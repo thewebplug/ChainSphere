@@ -104,6 +104,7 @@ contract SocialMedia {
     // Post[] postsArray;
     mapping(address user => Post[]) private userPosts; // maps a user address to array of posts
     mapping(address postAuthor => mapping(uint256 postId => Comment[])) private postComments; // maps address of the author of post and postId to array of comments
+    mapping(uint256 postId => Comment[]) private s_postIdToComments; // maps  postId to its array of comments
     mapping(address user => Comment[]) private userComments; // maps a user address to array of comments
     uint256 userId;
     mapping(address userAddress => uint256 userId) private s_userAddressToId;
@@ -119,7 +120,7 @@ contract SocialMedia {
     event UserRegistered(uint256 indexed id, address indexed userAddress, string indexed name);
     event PostCreated(uint256 postId, string authorName);
     event PostEdited(uint256 postId, string authorName);
-    event CommentCreated(uint256 indexed commentId, address indexed postAuthor, address indexed commentAuthor, uint256 postId);
+    event CommentCreated(uint256 indexed commentId, string postAuthor, string commentAuthor, uint256 postId);
     event PostLiked(uint256 indexed postId, address indexed postAuthor, address indexed liker);
     event Upvoted(uint256 postId, string posthAuthorName, string upvoterName);
     event Downvoted(uint256 postId, string posthAuthorName, string downvoterName);
@@ -297,20 +298,14 @@ contract SocialMedia {
         
     }
     
-    /** Deleted the function that used a for loop to determine
-    * vote status of user because for loops are not gas efficient in
-    * Solidity.
-    * Replaced the function with a mapping `s_hasVoted` in the mappings section above.
+    /**
+    * @dev createComment enables registered users to comment on any post
+    * @notice Since the postId is unique and can be mapped to author of the post, we only need the postId to uniquely reference any post in order to comment on it
+    * Because in any social media platform there are so much more comments than posts, we allow the commentId not to be unique in general. However, comment ids are unique relative to any given post. Our thought is that this will prevent overflow
      */
-    
-    function getUserPosts(address _userAddress) public view returns(Post[] memory) {
-        // Implementation to retrieve all posts by a user
-        return userPosts[_userAddress];
-
-    }
-    
-    function createComment(address _postAuthor, uint _postId, string memory _content) public {
-        uint256 commentId = generateCommentId();
+    function createComment(uint _postId, string memory _content) public checkUserExists(msg.sender) {
+        //
+        uint256 commentId = s_postIdToComments[_postId].length;
         
         Comment memory newComment = Comment({
             commentId: commentId,
@@ -321,10 +316,13 @@ contract SocialMedia {
             likesCount: 0
         });
         // s_comments[commentId] = Comment(commentId, msg.sender, _postId, _content, block.timestamp, 0);
-        postComments[_postAuthor][_postId].push(newComment);
+        string memory postAuthor = getUserById(_postId).name;
+        string memory commenter = getUserNameFromAddress(msg.sender);
 
-        // emit CommentCreated(commentId, msg.sender, _postId);
-        emit CommentCreated(commentId, _postAuthor, msg.sender, _postId);
+        // postComments[postAuthor][_postId].push(newComment);
+        s_postIdToComments[_postId].push(newComment);
+
+        emit CommentCreated(commentId, postAuthor, commenter, _postId);
     }
     
     function editComment(uint256 _commentId, string memory _content) public onlyCommentOwner(_commentId) {
@@ -344,6 +342,12 @@ contract SocialMedia {
         return s_addressToUserProfile[_userAddress];
     }
 
+    function getUserPosts(address _userAddress) public view returns(Post[] memory) {
+        // Implementation to retrieve all posts by a user
+        return userPosts[_userAddress];
+
+    }
+
     function getUserById(uint256 _userId) public view returns(User memory) {
         return s_users[_userId];
     }
@@ -352,6 +356,9 @@ contract SocialMedia {
         return s_posts[_postId];
     }
 
+    function getCommentByPostIdAndCommentId(uint256 _postId, uint256 _commentId) public view returns(Comment memory) {
+        return s_postIdToComments[_postId][_commentId];
+    }
     function getUserComments(address _userAddress) public view returns(Comment[] memory) {
         // Implementation to retrieve all comments by a user
         return userComments[_userAddress];
