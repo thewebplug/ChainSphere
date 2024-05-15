@@ -174,3 +174,13 @@ Note that the test script is `SocialMediaTest.t.sol`
 6. Wrote a test `testEmitsEventWhenPostGetsAnUpvote` to certify that an event is emitted whenever a post gets an upvote. The test passed.
 7. Wrote a test `testUserCantUpvoteAndDownvoteSamePost` to certify that a user cannot cast an upvote and also cast a downvote on the same post. The test reverted as expected - test passed.
 8. Wrote a test `testUserCantDownvoteAndUpvoteSamePost` to certify that a user cannot cast a downvote and also cast an upvote on the same post. The test reverted as expected - test passed.
+9. Test coverage improved from 63% to 75%
+
+
+Tasks Carried Out:
+Note that the test script is `SocialMediaTest.t.sol`
+1. Modified the `createComment` function. The comment id is now made to be unique only within a comment but in general, comment id's are not unique. They are tied to post ids. We think that if comment id's are made unique as well, we may likely encounter overflows.
+3. Wrote a test `testUserCantCreateCommentIfNotRegistered` to certify that only a registered user can comment on a post. The test reverted as expected - test passed.
+4. Wrote a test `testRegisteredUserCanCreateComment` to certify that a registered user can comment on a post. The test passed.
+5. Wrote a test `testEventEmitsWhenCommentIsCreated` to certify that an event emits any time a comment is created. The test passed.
+6. Test coverage improved from 75% to 84%

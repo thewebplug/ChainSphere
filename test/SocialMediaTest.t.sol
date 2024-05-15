@@ -60,6 +60,7 @@ contract SocialMediaTest is Test {
     event PostEdited(uint256 postId, string authorName);
     event Upvoted(uint256 postId, string posthAuthorName, string upvoterName);
     event Downvoted(uint256 postId, string posthAuthorName, string downvoterName);
+    event CommentCreated(uint256 indexed commentId, string postAuthor, string commentAuthor, uint256 postId);
     
 
     function setUp() public {
@@ -581,8 +582,9 @@ contract SocialMediaTest is Test {
     // Upvote & Downvote Tests //
     /////////////////////////////
 
+    // Test passes
     function testUserCantUpvoteAndDownvoteSamePost() public registerThreeUsersAndPost{
-        // Test is expected to revert since no one can upvote their post
+        // Test is expected to revert 
         address firstUser = socialMedia.getPostById(0).author;
 
         vm.prank(firstUser);
@@ -594,8 +596,9 @@ contract SocialMediaTest is Test {
         socialMedia.downvote(1); // user 0 gives a downvote to post of user 1
     }
 
+    // Test passes
     function testUserCantDownvoteAndUpvoteSamePost() public registerThreeUsersAndPost{
-        // Test is expected to revert since no one can upvote their post
+        // Test is expected to revert
         address firstUser = socialMedia.getPostById(0).author;
 
         vm.prank(firstUser);
@@ -606,4 +609,52 @@ contract SocialMediaTest is Test {
         vm.prank(firstUser);
         socialMedia.upvote(1); // user 0 gives a upvote to post of user 1
     }
+
+    //////////////////////////
+    // Create Comment Tests //
+    //////////////////////////
+
+    // Test Passes as expected
+    function testUserCantCreateCommentIfNotRegistered() public registerThreeUsersAndPost{
+        string memory content = "Praise God";
+
+        // Note that USER has not registered and as such, we expect test to revert
+        vm.expectRevert(
+            SocialMedia.SocialMedia__UserDoesNotExist.selector
+        );
+        vm.prank(USER);
+        socialMedia.createComment(0, content);
+    }
+
+    // Test Passes as expected
+    function testRegisteredUserCanCreateComment() public registerThreeUsersAndPost{
+        address firstUser = socialMedia.getPostById(0).author;
+        string memory content = "Praise God";
+
+        vm.prank(firstUser);
+        socialMedia.createComment(0, content);
+
+        // retrieve comment from the blockchain
+        string memory expectedContent = socialMedia.getCommentByPostIdAndCommentId(0,0).content;
+        console.log(expectedContent);
+    
+        assertEq(
+            keccak256(abi.encodePacked(expectedContent)),
+            keccak256(abi.encodePacked(content))
+        );
+    }
+
+    // Test Passes as expected
+    function testEventEmitsWhenCommentIsCreated() public registerThreeUsersAndPost{
+        address firstUser = socialMedia.getPostById(0).author;
+        address author = socialMedia.getPostById(1).author;
+        string memory content = "Praise God";
+        string memory commentAuthor = socialMedia.getUserNameFromAddress(firstUser);
+        string memory postAuthor = socialMedia.getUserNameFromAddress(author);
+
+        vm.expectEmit(true, false, false, false, address(socialMedia));
+        emit CommentCreated(0, postAuthor, commentAuthor, 0);
+        vm.prank(firstUser);
+        socialMedia.createComment(1, content);
+    }   
 }
