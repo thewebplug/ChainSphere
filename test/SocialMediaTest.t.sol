@@ -488,6 +488,7 @@ contract SocialMediaTest is Test {
         assertEq(num2Upvotes, expectedUpvotes);
     }
 
+    // Test passes
     function testEmitsEventWhenPostGetsAnUpvote() public registerThreeUsersAndPost{
         address upvoter = socialMedia.getPostById(0).author;
         address postAuthor = socialMedia.getPostById(1).author;
@@ -504,4 +505,105 @@ contract SocialMediaTest is Test {
         
     }
 
+    ////////////////////
+    // Downvote Tests //
+    ////////////////////
+
+    function testUserCantDownvotePostIfTheyAreTheOwner() public registerThreeUsersAndPost{
+        // Test is expected to revert since no one can upvote their post
+        address firstUser = socialMedia.getPostById(0).author;
+
+        vm.expectRevert(
+            SocialMedia.SocialMedia__OwnerCannotVote.selector
+        );
+        vm.prank(firstUser);
+        socialMedia.downvote(0);
+    }
+
+    // Test passes
+    function testUserCanDownvotePostIfTheyAreNotTheOwner() public registerThreeUsersAndPost{
+        address firstUser = socialMedia.getPostById(0).author;
+
+        vm.prank(firstUser);
+        socialMedia.downvote(1);
+        uint256 numDownvotes = socialMedia.getPostById(1).downvotes;
+        uint256 expectedDownvotes = 1;
+        assertEq(numDownvotes, expectedDownvotes);
+    }
+
+    function testUserCantDownvoteSamePostMoreThanOnce() public registerThreeUsersAndPost{
+        // Test is expected to revert since no one can upvote their post
+        address firstUser = socialMedia.getPostById(0).author;
+
+        vm.prank(firstUser);
+        socialMedia.downvote(1); //cast downvote first time
+        vm.expectRevert(
+            SocialMedia.SocialMedia__AlreadyVoted.selector
+        );
+        vm.prank(firstUser);
+        socialMedia.downvote(1); // cast downvote for the second time on the same post
+    }
+
+    // Test passed
+    function testUserCanDownvoteMultiplePostsIfTheyAreNotTheOwner() public registerThreeUsersAndPost{
+        address firstUser = socialMedia.getPostById(0).author;
+
+        vm.startPrank(firstUser);
+        socialMedia.downvote(1);
+        socialMedia.downvote(2);
+        vm.stopPrank();
+
+        uint256 num1Downvotes = socialMedia.getPostById(1).downvotes;
+        uint256 num2Downvotes = socialMedia.getPostById(2).downvotes;
+        uint256 expectedDownvotes = 1;
+        assertEq(num1Downvotes, expectedDownvotes);
+        assertEq(num2Downvotes, expectedDownvotes);
+    }
+
+    // Test passes
+    function testEmitsEventWhenPostGetsAnDownvote() public registerThreeUsersAndPost{
+        address downvoter = socialMedia.getPostById(0).author;
+        address postAuthor = socialMedia.getPostById(1).author;
+
+        string memory voterName = socialMedia.getUserNameFromAddress(downvoter);
+        string memory postAuthorName = socialMedia.getUserNameFromAddress(postAuthor);
+
+        vm.expectEmit(true, false, false, false, address(socialMedia));
+        emit Downvoted(1, postAuthorName, voterName);
+        
+        vm.startPrank(downvoter);
+        socialMedia.downvote(1);
+        vm.stopPrank();
+        
+    }
+
+    /////////////////////////////
+    // Upvote & Downvote Tests //
+    /////////////////////////////
+
+    function testUserCantUpvoteAndDownvoteSamePost() public registerThreeUsersAndPost{
+        // Test is expected to revert since no one can upvote their post
+        address firstUser = socialMedia.getPostById(0).author;
+
+        vm.prank(firstUser);
+        socialMedia.upvote(1); // user 0 gives an upvote to post of user 1
+        vm.expectRevert(
+            SocialMedia.SocialMedia__AlreadyVoted.selector
+        );
+        vm.prank(firstUser);
+        socialMedia.downvote(1); // user 0 gives a downvote to post of user 1
+    }
+
+    function testUserCantDownvoteAndUpvoteSamePost() public registerThreeUsersAndPost{
+        // Test is expected to revert since no one can upvote their post
+        address firstUser = socialMedia.getPostById(0).author;
+
+        vm.prank(firstUser);
+        socialMedia.downvote(1); // user 0 gives an downvote to post of user 1
+        vm.expectRevert(
+            SocialMedia.SocialMedia__AlreadyVoted.selector
+        );
+        vm.prank(firstUser);
+        socialMedia.upvote(1); // user 0 gives a upvote to post of user 1
+    }
 }

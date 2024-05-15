@@ -100,6 +100,24 @@ Update your `foundry.toml` to have read permissions on the broadcast folder.
 fs_permissions = [{ access = "read", path = "./broadcast" }]
 ```
 
+## Tests in Foundry
+To run a test in foundry, navigate to the root directory of the project and run the following command
+```bash
+forge test
+```
+The above command will search for any files in the directory with a `.t.sol` extension and further search for any functions in such files whose names begin with `test` and execute them.
+
+To run a specific test, run the following command instead
+```bash
+forge test --match-test <name-of-test>
+```
+
+To see the test coverage so far, run the following command
+```bash
+forge coverage
+```
+
+
 
 Tasks Carried Out:
 Note that the test script is `SocialMediaTest.t.sol`
@@ -142,3 +160,17 @@ Note that the test script is `SocialMediaTest.t.sol`
 6. Wrote a test `testUserCanUpvoteMultiplePostsIfTheyAreNotTheOwner` to certify that a user cannot cast one upvote to multiple posts. The test passed.
 7. Modified the `Upvoted` and `Downvoted` events to emit names of voters rather than addresses
 8. Wrote a test `testEmitsEventWhenPostGetsAnUpvote` to certify that an event is emitted whenever a post gets an upvote. The test passed.
+
+
+
+
+Tasks Carried Out:
+Note that the test script is `SocialMediaTest.t.sol`
+1. Wrote a test `testUserCantDownvotePostIfTheyAreTheOwner` to certify that a user cannot cast a downvote to any post for which they are the author. The test reverted as expected - test passed.
+2. Modified the `downvote` function so that it increases the number of downvotes by 1 whenever it is called.
+3. Wrote a test `testUserCanDownvotePostIfTheyAreNotTheOwner` to certify that a user can cast a downvote to any post for which they are not the author. The test passed.
+4. Wrote a test `testUserCantDownvoteSamePostMoreThanOnce` to certify that a user cannot cast more than one downvote to any post. The test reverted as expected - test passed.
+5. Wrote a test `testUserCanDownvoteMultiplePostsIfTheyAreNotTheOwner` to certify that a user can cast one downvote to each of multiple posts. The test passed.
+6. Wrote a test `testEmitsEventWhenPostGetsAnUpvote` to certify that an event is emitted whenever a post gets an upvote. The test passed.
+7. Wrote a test `testUserCantUpvoteAndDownvoteSamePost` to certify that a user cannot cast an upvote and also cast a downvote on the same post. The test reverted as expected - test passed.
+8. Wrote a test `testUserCantDownvoteAndUpvoteSamePost` to certify that a user cannot cast a downvote and also cast an upvote on the same post. The test reverted as expected - test passed.
