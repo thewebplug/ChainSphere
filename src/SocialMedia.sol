@@ -107,10 +107,7 @@ contract SocialMedia {
     mapping(address user => mapping(uint256 postId => bool voteStatus)) private s_hasVoted; //Checks if a user has voted for a post or not
     mapping(address user => Post[]) private userPosts; // gets all posts by a user using the user address
     
-    mapping(uint256 postId => mapping(address likerAddress => bool likeStatus)) private s_likedPost; // indicates whether a post is liked by a user using postId and userAddress
-    mapping(uint256 postId => address[]) private s_likersOfPostt; // gets an array of likers of a post using the postId
-    
-    
+
     /** Variables Relating to Comment */
 
     mapping(uint256 postId => Comment[]) private s_postIdToComments; // gets array of comments on a post using the postId
@@ -217,13 +214,13 @@ contract SocialMedia {
     mapping(address => bool) public eligible_users;
 
     // Function to identify and mark eligible users
-    function identifyEligibleUsers() public  {
-        for (uint i = 0; i < s_users.length; i++) {
-            if (userPosts[s_users[i].userAddress].length > 10) {
-                eligible_users[s_users[i].userAddress] = true;
-            }
-        }
-    }
+    // function identifyEligibleUsers() public  {
+    //     for (uint i = 0; i < s_users.length; i++) {
+    //         if (userPosts[s_users[i].userAddress].length > 10) {
+    //             eligible_users[s_users[i].userAddress] = true;
+    //         }
+    //     }
+    // }
 
     function registerUser(string memory _name, string memory _bio, string memory _profileImageHash) public usernameTaken(_name) {
         uint256 id = userId++;
@@ -367,7 +364,7 @@ contract SocialMedia {
         s_postIdToComments[_postId][_commentId].author = address(0); // delete address of comment author
     }
     
-    function likeComment(uint256 _postId, uint256 _commentId) public {
+    function likeComment(uint256 _postId, uint256 _commentId) public checkUserExists(msg.sender){
         // retrieve the comment from the Blockchain in increment number of likes 
         s_postIdToComments[_postId][_commentId].likesCount++;
         // There is need to note the users that like a comment
@@ -398,6 +395,12 @@ contract SocialMedia {
     function getCommentByPostIdAndCommentId(uint256 _postId, uint256 _commentId) public view returns(Comment memory) {
         return s_postIdToComments[_postId][_commentId];
     }
+
+    function getCommentLikersByPostIdAndCommentId(uint256 _postId, uint256 _commentId) public view returns(address[] memory) {
+        return s_likersOfComment[_postId][_commentId];
+    }
+
+
     function getUserComments(address _userAddress) public view returns(Comment[] memory) {
         // Implementation to retrieve all comments by a user
         return userComments[_userAddress];
