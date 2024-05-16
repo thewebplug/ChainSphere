@@ -335,8 +335,13 @@ contract SocialMedia {
         
     }
     
-    function deleteComment(uint256 _postId, uint256 _commentId) public payable onlyCommentOwner(_postId, _commentId) {
-        // delete s_comments[_commentId];
+    /**
+    * @dev only the user who created a comment should be able to delete it. Also, a user should pay to delete their post
+     */
+    function deleteComment(uint256 _postId, uint256 _commentId) public payable onlyCommentOwner(_postId, _commentId) hasPaid {
+        // get the comment from the Blockchain (call by reference) and update it
+        s_postIdToComments[_postId][_commentId].content = ""; // delete content
+        s_postIdToComments[_postId][_commentId].author = address(0); // delete address of comment author
     }
     
     function likeComment(uint _commentId) public {
@@ -386,31 +391,31 @@ contract SocialMedia {
         _to.transfer(address(this).balance);
     }
     
-    function stopDapp() public onlyOwner {
-        // Implement to stop the Dapp
-    }
+    // function stopDapp() public onlyOwner {
+    //     // Implement to stop the Dapp
+    // }
     
-    function startDapp() public onlyOwner {
-        // Implement to start the Dapp
-    }
+    // function startDapp() public onlyOwner {
+    //     // Implement to start the Dapp
+    // }
     
     function changeOwner(address _newOwner) public onlyOwner {
         s_owner = _newOwner;
     }
     
-    // Internal functions
-    function generateUserId() internal pure returns(uint) {
-        // Implementation to generate unique user IDs
-        return 1;
-    }
+    // // Internal functions
+    // function generateUserId() internal pure returns(uint) {
+    //     // Implementation to generate unique user IDs
+    //     return 1;
+    // }
     
-    function generatePostId() internal pure returns(uint) {
-        // Implementation to generate unique post IDs
-        return 1;
-    }
+    // function generatePostId() internal pure returns(uint) {
+    //     // Implementation to generate unique post IDs
+    //     return 1;
+    // }
     
-    function generateCommentId() internal  pure returns(uint) {
-        // Implementation to generate unique comment IDs
-        return 1;
-    }
+    // function generateCommentId() internal  pure returns(uint) {
+    //     // Implementation to generate unique comment IDs
+    //     return 1;
+    // }
 }
