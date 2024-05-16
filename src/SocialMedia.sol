@@ -210,18 +210,6 @@ contract SocialMedia {
      */
     receive() external payable {}
 
-     // Mapping to store eligible users
-    mapping(address => bool) public eligible_users;
-
-    // Function to identify and mark eligible users
-    // function identifyEligibleUsers() public  {
-    //     for (uint i = 0; i < s_users.length; i++) {
-    //         if (userPosts[s_users[i].userAddress].length > 10) {
-    //             eligible_users[s_users[i].userAddress] = true;
-    //         }
-    //     }
-    // }
-
     function registerUser(string memory _name, string memory _bio, string memory _profileImageHash) public usernameTaken(_name) {
         uint256 id = userId++;
         // For now, this is the way to create a post with empty comments
