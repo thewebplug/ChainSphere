@@ -202,6 +202,18 @@ contract SocialMedia {
      */
     receive() external payable {}
 
+     // Mapping to store eligible users
+    mapping(address => bool) public eligible_users;
+
+    // Function to identify and mark eligible users
+    function identifyEligibleUsers() public  {
+        for (uint i = 0; i < s_users.length; i++) {
+            if (userPosts[s_users[i].userAddress].length > 10) {
+                eligible_users[s_users[i].userAddress] = true;
+            }
+        }
+    }
+
     function registerUser(string memory _name, string memory _bio, string memory _profileImageHash) public usernameTaken(_name) {
         uint256 id = userId++;
         // For now, this is the way to create a post with empty comments
@@ -391,31 +403,9 @@ contract SocialMedia {
         _to.transfer(address(this).balance);
     }
     
-    // function stopDapp() public onlyOwner {
-    //     // Implement to stop the Dapp
-    // }
-    
-    // function startDapp() public onlyOwner {
-    //     // Implement to start the Dapp
-    // }
     
     function changeOwner(address _newOwner) public onlyOwner {
         s_owner = _newOwner;
     }
     
-    // // Internal functions
-    // function generateUserId() internal pure returns(uint) {
-    //     // Implementation to generate unique user IDs
-    //     return 1;
-    // }
-    
-    // function generatePostId() internal pure returns(uint) {
-    //     // Implementation to generate unique post IDs
-    //     return 1;
-    // }
-    
-    // function generateCommentId() internal  pure returns(uint) {
-    //     // Implementation to generate unique comment IDs
-    //     return 1;
-    // }
 }
