@@ -214,3 +214,14 @@ Note that the test script is `SocialMediaTest.t.sol`
 3. Wrote a test `testCantLikeCommentIfNotARegisteredUser` to certify that a user cannot like a comment they are not registered on the platform. The test reverted as expected - test passed.
 4. Wrote a test `testRegisteredUserCanLikeComment` to certify that a user can like any comment if they are registered on the platform. The test passed.
 5. Test coverage improved from 91% to 93%
+
+
+
+Tasks Carried Out:
+
+1. Added a Modifier `isValid` to check the age of a post to ensure that the post is not up to 30 days old before it is being considered for reward or not. This is one way to ensure an author does not get rewarded multiple times over the same post.
+2. Created a private function `_isPostEligibleForReward` this function receives a `postId` as argument and checks if the post is eligible for reward by calculating the age of the post and its postScore if applicable.
+3. Created a new variable `s_recentPosts` which holds all posts that are at most `VALIDITY_PERIOD` old. The Chainlink Automation will loop through this array to find authors that are eligible for reward. This array will be reset anytime authors have picked using Chainlink VRF for reward. This is so that the array will hold fresh set of recent posts.
+4. Modified the `createPost` function so that anytime a post is created, in addition to adding the post to an array of posts, the post is equally added to an array of recent posts `s_recentPosts`. This is to improve the efficiency of the system so that there is no need to loop through the entire array of posts which will cost more gas. 
+5. Created a private function `_pickEligibleAuthors` which loops through the `s_recentPosts` array, picks posts that are eligible for reward and send the authors of such posts into the array of authors eligible for reward for random selection using Chainlink VRF.
+

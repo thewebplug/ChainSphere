@@ -86,6 +86,8 @@ contract SocialMedia {
 
     // Constants
     uint256 private constant MINIMUM_USD = 5e18;
+    uint256 private constant MIN_POST_SCORE = 10;
+    uint256 private constant VALIDITY_PERIOD = 30 days; // Period for which a post can be adjudged eligible for reward based on its postScore
 
     // Mappings
 
@@ -97,7 +99,8 @@ contract SocialMedia {
 
 
     /** Variables Relating to Post */
-    Post[] s_posts; // array of posts
+    Post[] s_posts; // array of all posts
+    Post[] s_recentPosts; // array of posts that are not more than VALIDITY_PERIOD old. This array is reset anytime authors have been picked for reward.
     mapping(uint256 postId => Post) private s_idToPost; // get full details of a post using the postId
     
     mapping(address author => uint256 postId) private s_authorToPostId; // Get postId using address of the author 
@@ -120,7 +123,9 @@ contract SocialMedia {
     /** Other Variables */
 
     address private s_owner; // would have made this variable immutable but for the changes_Owner function in the contract
-    
+    address[] private s_authorsEligibleForReward; // An array of users eligible for rewards
+    mapping(address author => bool status) private s_authorEligibilityStatus; // variable that indicates whether or not the author of a post is eligible for a reward
+    mapping(uint256 postId => bool status) private  s_postMarkedAsEligibleForReward; // indicate that a post already qualifies author for reward and as such, author should not be qualified multiple times on the basis of one same post
     
     //////////////
     /// Events ///
@@ -192,6 +197,16 @@ contract SocialMedia {
         }
         _;
     }
+
+    modifier isValid(uint256 _postId) {
+        uint256 presentTime = block.timestamp;
+        uint256 postTime = getPostById(_postId).timestamp;
+        if(presentTime - postTime >= VALIDITY_PERIOD){
+            revert();
+        }
+        _;
+    }
+
     ///////////////////
     /// Constructor ///
     ///////////////////
@@ -258,12 +273,10 @@ contract SocialMedia {
 
         string memory nameOfUser = getUserNameFromAddress(msg.sender);
         
-        // Add the post to userPosts
-        userPosts[msg.sender].push(newPost);
-        // Add the post to the array of posts
-        s_posts.push(newPost);
-        // map post to the author
-        s_authorToPostId[msg.sender] = postId;
+        userPosts[msg.sender].push(newPost); // Add the post to userPosts
+        s_posts.push(newPost); // Add the post to the array of posts
+        s_recentPosts.push(newPost); // Add the post to the array of recent posts for possible nomination for reward
+        s_authorToPostId[msg.sender] = postId; // map post to the author
         s_postIdToAuthor[postId] = msg.sender;
         emit PostCreated(postId, nameOfUser);
     }
@@ -293,6 +306,8 @@ contract SocialMedia {
         address postAuthAddress = s_postIdToAuthor[_postId];
         string memory postAuthorName = getUserNameFromAddress(postAuthAddress);
         string memory upvoter = getUserNameFromAddress(msg.sender);
+        
+        
         emit Upvoted(_postId, postAuthorName, upvoter);
     }
     
@@ -303,6 +318,7 @@ contract SocialMedia {
         address postAuthAddress = s_postIdToAuthor[_postId];
         string memory postAuthorName = getUserNameFromAddress(postAuthAddress);
         string memory downvoterName = getUserNameFromAddress(msg.sender);
+        
         emit Downvoted(_postId, postAuthorName, downvoterName);
         
     }
@@ -361,7 +377,51 @@ contract SocialMedia {
         s_likersOfComment[_postId][_commentId].push(msg.sender);
         
     }
-    
+
+
+    ///////////////////////
+    // Private Functions //
+    ///////////////////////
+
+    /**
+    * @dev This function checks the the number of upvotes and number of downvotes of a post, calculates their difference to tell if the author of the post is eligible for rewards in that period.
+    * @notice A user can be adjudged eligible on multiple grounds if they have multiple posts with significantly more number of upvotes than downvotes
+     */
+    function _isPostEligibleForReward(uint256 _postId) private view isValid(_postId) returns(bool isEligible) {
+        uint256 numOfUpvotes = getPostById(_postId).upvotes; // get number of upvotes of post
+        uint256 numOfDownvotes = getPostById(_postId).downvotes; // get number of downvotes of post
+        uint256 postScore = numOfUpvotes - numOfDownvotes > 0 ? numOfUpvotes - numOfDownvotes : 0; // set minimum postScore to zero. We dont want negative values
+        if(postScore > MIN_POST_SCORE){
+            isEligible = true; // a post is adjudged eligible for reward if the post has ten (10) more upvotes than downvotes
+        }
+    }
+
+    /**
+    * @dev This function is to be called automatically using Chainlink Automation every VALIDITY_PERIOD (i.e. 30 days or as desirable). The function loops through an array of recentPosts and checks if posts are eligible for rewards and add the corresponding authors to an array of eligible authors for reward
+     */
+    function _pickEligibleAuthors() private {
+        uint256 len = s_recentPosts.length; // number of recent posts
+        uint256 i; // define the counter variable
+
+        /** Loop through the array and pick posts that are eligible for reward */
+        for(i; i < len; ){
+            // Check if author is eligible for rewards and add their address to the array of eligible users
+
+            if(_isPostEligibleForReward(s_recentPosts[i].postId)){
+                uint256 postId = s_recentPosts[i].postId;
+                address postAuthAddress = s_postIdToAuthor[postId]; // get address of author
+                s_authorsEligibleForReward.push(postAuthAddress); // add address of author to list of authors eligible for reward
+            }
+
+            unchecked {
+                i++;
+            }
+        }
+    }
+
+    //////////////////////
+    // Getter Functions //
+    //////////////////////    
     function getUser(address _userAddress) public view returns(User memory) {
         return s_addressToUserProfile[_userAddress];
     }
