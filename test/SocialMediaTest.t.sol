@@ -664,7 +664,7 @@ contract SocialMediaTest is Test {
 
     
     // Test reverts as expected - Test passes
-    function testCantEditCommenttIfNotTheOwner() public registerThreeUsersAndPost {
+    function testCantEditCommentIfNotTheOwner() public registerThreeUsersAndPost {
         // Test is expected to revert because we will prank a user to try editing a comment of another user
 
         // Get the address of the author of the first post 
@@ -724,18 +724,71 @@ contract SocialMediaTest is Test {
 
     }
 
-    // // Test Passes as expected
-    // function testEventEmitsWhenPostIsEdited() public registerThreeUsersAndPost {
-    //     address firstUser = socialMedia.getPostById(0).author;
-    //     string memory newContent = "Immaculate Heart of Mary";
-    //     string memory imgHash = "";
-        
-    //     string memory myName = socialMedia.getUserNameFromAddress(firstUser);
+    //////////////////////////
+    // Delete Comment Tests //
+    //////////////////////////
 
-    //     vm.expectEmit(true, false, false, false, address(socialMedia));
-    //     emit PostEdited(0, myName);
-    //     vm.prank(firstUser);
-    //     socialMedia.editPost{value: EDITING_FEE}(0, newContent, imgHash);
-        
-    // }
+    
+    // Test reverts as expected - Test passes
+    function testCantDeleteCommentIfNotTheOwner() public registerThreeUsersAndPost {
+        // Test is expected to revert because we will prank a user to try deleting a comment of another user
+
+        // Get the address of the author of the first post 
+        address firstUser = socialMedia.getPostById(0).author;
+        string memory content = "Praise God";
+
+        vm.prank(firstUser);
+        socialMedia.createComment(0, content); // user 0 comments on their post 
+
+        vm.expectRevert(
+            SocialMedia.SocialMedia__NotCommentOwner.selector
+        );
+        vm.prank(USER);
+        socialMedia.deleteComment(0, 0);
+
+    }
+
+    // Test passes
+    function testOwnerCantDeleteCommentWithoutPaying() public registerThreeUsersAndPost {
+        // Test is expected to revert because a user will try deleting their comment without making payment
+
+        // Get the address of the author of the first post 
+        address firstUser = socialMedia.getPostById(0).author;
+        string memory content = "Praise God";
+
+        vm.prank(firstUser);
+        socialMedia.createComment(0, content); // user 0 comments on their post 
+
+        vm.expectRevert(
+            SocialMedia.SocialMedia__PaymentNotEnough.selector
+        );
+        vm.prank(firstUser);
+        socialMedia.deleteComment(0, 0);
+    }
+
+    // Test passes
+    function testOwnerCanDeleteCommentAfterPaying() public registerThreeUsersAndPost {
+        // Test is expected to pass because a user will pay for deleting their post
+
+        // Get the address of the author of the first post 
+        address firstUser = socialMedia.getPostById(0).author;
+        string memory content = "Praise God";
+
+        vm.startPrank(firstUser);
+        socialMedia.createComment(0, content); // user 0 comments on their post 
+        socialMedia.deleteComment{value: EDITING_FEE}(0, 0);
+        vm.stopPrank();
+
+        string memory retrievedComment = socialMedia.getCommentByPostIdAndCommentId(0,0).content; // retrieve comment after deleting to verify that comment is actually deleted
+        address retrievedAddress = socialMedia.getCommentByPostIdAndCommentId(0, 0).author;
+
+        // assert that comment is now empty i.e. comment is deleted
+        assertEq(
+            keccak256(abi.encodePacked(retrievedComment)),
+            keccak256(abi.encodePacked(""))
+        );
+
+        // assert that commenter is now the zero address i.e. commenter address is deleted
+        assertEq(retrievedAddress, address(0));
+    }
 }
