@@ -1,5 +1,5 @@
 Compiling 33 files with 0.8.24
-Solc 0.8.24 finished in 4.75s
+Solc 0.8.24 finished in 5.13s
 Compiler run [32msuccessful![0m
 Analysing contracts...
 Running tests...
@@ -8,6 +8,6 @@ Running tests...
 | script/DeploySocialMedia.s.sol  | 100.00% (6/6)   | 100.00% (7/7)   | 100.00% (0/0) | 100.00% (1/1)  |
 | script/HelperConfig.s.sol       | 0.00% (0/11)    | 0.00% (0/16)    | 0.00% (0/2)   | 0.00% (0/3)    |
 | src/PriceConverter.sol          | 0.00% (0/5)     | 0.00% (0/9)     | 100.00% (0/0) | 0.00% (0/2)    |
-| src/SocialMedia.sol             | 85.94% (55/64)  | 87.84% (65/74)  | 100.00% (0/0) | 55.56% (15/27) |
+| src/SocialMedia.sol             | 92.42% (61/66)  | 93.42% (71/76)  | 100.00% (0/0) | 78.26% (18/23) |
 | test/mocks/MockV3Aggregator.sol | 6.67% (1/15)    | 6.67% (1/15)    | 100.00% (0/0) | 20.00% (1/5)   |
-| Total                           | 61.39% (62/101) | 60.33% (73/121) | 0.00% (0/2)   | 44.74% (17/38) |
+| Total                           | 66.02% (68/103) | 64.23% (79/123) | 0.00% (0/2)   | 58.82% (20/34) |

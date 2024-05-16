@@ -194,3 +194,23 @@ Note that the test script is `SocialMediaTest.t.sol`
 3. Wrote a test `testOwnerCantEditCommentWithoutPaying` to certify that a user cannot edit their comment without paying. The test reverted as expected - test passed.
 4. Wrote a test `testOwnerCanEditCommentAfterPaying` to certify that a user can edit their comment if they are paying for it. The test passed.
 5. Test coverage improved from 84% to 87%
+
+
+
+Tasks Carried Out:
+Note that the test script is `SocialMediaTest.t.sol`
+1. Modified the `deleteComment` function which now takes `postId` and `commentId` as arguments and removes the content of the comment and address of the commenter from the Blockchain. 
+2. Wrote a test `testCantDeleteCommentIfNotTheOwner` to certify that a user cannot delete a comment for which they are not the author. The test reverted as expected - test passed.
+3. Wrote a test `testOwnerCantDeleteCommentWithoutPaying` to certify that a user cannot delete their comment without paying. The test reverted as expected - test passed.
+4. Wrote a test `testOwnerCanDeleteCommentAfterPaying` to certify that a user can delete their comment if they are paying for it. The test passed.
+5. Test coverage improved from 87% to 91%
+
+
+
+Tasks Carried Out:
+Note that the test script is `SocialMediaTest.t.sol`
+1. Modified the `likeComment` function which now takes `postId` and `commentId` as arguments and increments the number of likes by one.
+2. Modified variable names to enhance better reading understanding of Code. Also rearranged the order of variables to align with the different structs in the Smart Contract i.e. User, Post and Comment.
+3. Wrote a test `testCantLikeCommentIfNotARegisteredUser` to certify that a user cannot like a comment they are not registered on the platform. The test reverted as expected - test passed.
+4. Wrote a test `testRegisteredUserCanLikeComment` to certify that a user can like any comment if they are registered on the platform. The test passed.
+5. Test coverage improved from 91% to 93%
