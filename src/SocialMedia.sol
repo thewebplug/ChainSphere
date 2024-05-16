@@ -27,14 +27,14 @@ pragma solidity ^0.8.18;
 import { PriceConverter } from "./PriceConverter.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-import {VRFv2Consumer} from "./VRFv2Consumer.sol";
+// import {VRFv2Consumer} from "./VRFv2Consumer.sol";
 
-import {AutomationCompatible} from "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
+// import {AutomationCompatible} from "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
 
 
 contract SocialMedia {
     using PriceConverter for uint256;
-    VRFv2Consumer public vrfConsumer;
+    // VRFv2Consumer public vrfConsumer;
 
 
     //////////////
@@ -95,46 +95,6 @@ contract SocialMedia {
     uint256 private constant MIN_POST_SCORE = 10;
     uint256 private constant VALIDITY_PERIOD = 30 days; // Period for which a post can be adjudged eligible for reward based on its postScore
 
-    // Mapping to store eligible users
-    // mapping(address => bool) public eligible_users;
-    address[] public eligibleUserAddresses;
-
-    //eligible users length
-    uint256 public mappingLength;
-
-
-    // Function to identify and mark eligible users
-    function identifyEligibleUsers() public  {
-        for (uint i = 0; i < s_users.length; i++) {
-            if (userPosts[s_users[i].userAddress].length > 10) {
-                mappingLength++;
-
-            eligibleUserAddresses.push(s_users[i].userAddress);   
-            }
-        }
-    }
-   
-      // Event for rewarding users
-    event RewardSent(address indexed user, uint256 amount);
-
-   function rewardUser() external {
-    // Get a random number within the range of eligible users
-    uint256 randomNumber = useRandomNumber();
-
-    // Identify eligible users
-    identifyEligibleUsers();
-
-    // Get the address of the randomly selected user
-    address randomUserAddress = eligibleUserAddresses[randomNumber];
-
-    // Transfer $5 to the selected user
-    uint256 amount = 5 ether; // $5 in wei
-    payable(randomUserAddress).transfer(amount);
-
-    // Emit an event
-    emit RewardSent(randomUserAddress, amount);
-   }
-    
 
     // Mappings
 
@@ -185,6 +145,8 @@ contract SocialMedia {
     event PostLiked(uint256 indexed postId, address indexed postAuthor, address indexed liker);
     event Upvoted(uint256 postId, string posthAuthorName, string upvoterName);
     event Downvoted(uint256 postId, string posthAuthorName, string downvoterName);
+    // Event for rewarding users
+    event RewardSent(address indexed user, uint256 amount);
     
     /////////////////
     /// Modifiers ///
@@ -257,9 +219,8 @@ contract SocialMedia {
     ///////////////////
     /// Constructor ///
     ///////////////////
-    constructor(address _vrfConsumerAddress,address priceFeed) {
+    constructor(address priceFeed) {
         s_owner = msg.sender;
-        vrfConsumer = VRFv2Consumer(_vrfConsumerAddress);
 
         s_priceFeed = AggregatorV3Interface(priceFeed);
     }
@@ -524,11 +485,7 @@ contract SocialMedia {
     function changeOwner(address _newOwner) public onlyOwner {
         s_owner = _newOwner;
     }
-    // Function to retrieve a random number from the VRFv2Consumer contract in between 0 to length of eligible users
-    function useRandomNumber() public view returns (uint256) {
-        // Call the getRandomNumber function from the VRFv2Consumer contract instance
-        return vrfConsumer.getRandomNumber(eligibleUserAddresses.length);
-    }
+    
     
 
 }
