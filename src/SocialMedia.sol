@@ -63,7 +63,6 @@ contract SocialMedia {
         uint256 upvotes;
         uint256 downvotes;
         address author;
-        // Comment[] postComments;
     }
     
     struct Comment {
@@ -79,6 +78,9 @@ contract SocialMedia {
     /// State Variables ///
     ///////////////////////
 
+
+    /* For gas efficiency, we declare variables as private and define getter functions for them where necessary */
+
     // Imported Variables
     AggregatorV3Interface private s_priceFeed;
 
@@ -86,33 +88,39 @@ contract SocialMedia {
     uint256 private constant MINIMUM_USD = 5e18;
 
     // Mappings
-    mapping(address userAddress => User) private s_addressToUserProfile;
-    mapping(uint256 postId => Post) private s_idToPost;
-    mapping(uint256 commentId => Comment) private s_comments;
 
-    // Map every post to the author using the postId
-    mapping(address userAddress => uint256 postId) private s_userAddressToPostId;
-    mapping(uint256 postId => address author) private s_postIdToAuthor;
-    
-
-    /* For gas efficiency, we declare variables as private and define getter functions for them where necessary */
-    address private s_owner; // would have made this variable immutable but for the changes_Owner function in the contract
-    mapping(string name => address userAddress) private s_usernameToAddress;
-    // address[] private s_voters;
-    mapping(address user => mapping(uint256 postId => bool voteStatus)) private s_hasVoted; //Checks if a user has voted or not
-    // Comment[] commentsArray;
-    // Post[] postsArray;
-    mapping(address user => Post[]) private userPosts; // maps a user address to array of posts
-    mapping(address postAuthor => mapping(uint256 postId => Comment[])) private postComments; // maps address of the author of post and postId to array of comments
-    mapping(uint256 postId => Comment[]) private s_postIdToComments; // maps  postId to its array of comments
-    mapping(uint256 postId => mapping(uint256 commentId => address commenterAddress)) private s_postAndCommentIdToAddress; // maps  postId and commentId to commenter
-    mapping(address user => Comment[]) private userComments; // maps a user address to array of comments
-    uint256 userId;
-    mapping(address userAddress => uint256 userId) private s_userAddressToId;
-    
+    /** Variables Relating to User */
     User[] s_users; // array of users
-    Post[] s_posts; // array of posts
+    mapping(address userAddress => User) private s_addressToUserProfile;
+    uint256 userId;
+    mapping(address userAddress => uint256 userId) private s_userAddressToId; // gets userId using address of user
 
+
+    /** Variables Relating to Post */
+    Post[] s_posts; // array of posts
+    mapping(uint256 postId => Post) private s_idToPost; // get full details of a post using the postId
+    
+    mapping(address author => uint256 postId) private s_authorToPostId; // Get postId using address of the author 
+    mapping(uint256 postId => address author) private s_postIdToAuthor; // Get the address of the author of a post using the postId
+    
+    mapping(string name => address userAddress) private s_usernameToAddress; // get user address using their name
+    mapping(address user => mapping(uint256 postId => bool voteStatus)) private s_hasVoted; //Checks if a user has voted for a post or not
+    mapping(address user => Post[]) private userPosts; // gets all posts by a user using the user address
+    
+
+    /** Variables Relating to Comment */
+
+    mapping(uint256 postId => Comment[]) private s_postIdToComments; // gets array of comments on a post using the postId
+    mapping(uint256 postId => mapping(uint256 commentId => address commenterAddress)) private s_postAndCommentIdToAddress; // gets comment author using the postId and commentId
+
+    mapping(address user => Comment[]) private userComments; // gets an array of comments by a user using user address
+    mapping(uint256 postId => mapping(uint256 commentId => mapping(address commenterAddress => bool likeStatus))) private s_likedComment; // indicates whether a comment is liked by a user using postId and commentId and userAddress
+    mapping(uint256 postId => mapping(uint256 commentId => address[])) private s_likersOfComment; // gets an array of likers of a comment using the postId and commentId
+        
+    /** Other Variables */
+
+    address private s_owner; // would have made this variable immutable but for the changes_Owner function in the contract
+    
     
     //////////////
     /// Events ///
@@ -202,18 +210,6 @@ contract SocialMedia {
      */
     receive() external payable {}
 
-     // Mapping to store eligible users
-    mapping(address => bool) public eligible_users;
-
-    // Function to identify and mark eligible users
-    function identifyEligibleUsers() public  {
-        for (uint i = 0; i < s_users.length; i++) {
-            if (userPosts[s_users[i].userAddress].length > 10) {
-                eligible_users[s_users[i].userAddress] = true;
-            }
-        }
-    }
-
     function registerUser(string memory _name, string memory _bio, string memory _profileImageHash) public usernameTaken(_name) {
         uint256 id = userId++;
         // For now, this is the way to create a post with empty comments
@@ -267,7 +263,7 @@ contract SocialMedia {
         // Add the post to the array of posts
         s_posts.push(newPost);
         // map post to the author
-        s_userAddressToPostId[msg.sender] = postId;
+        s_authorToPostId[msg.sender] = postId;
         s_postIdToAuthor[postId] = msg.sender;
         emit PostCreated(postId, nameOfUser);
     }
@@ -356,8 +352,14 @@ contract SocialMedia {
         s_postIdToComments[_postId][_commentId].author = address(0); // delete address of comment author
     }
     
-    function likeComment(uint _commentId) public {
-        s_comments[_commentId].likesCount++;
+    function likeComment(uint256 _postId, uint256 _commentId) public checkUserExists(msg.sender){
+        // retrieve the comment from the Blockchain in increment number of likes 
+        s_postIdToComments[_postId][_commentId].likesCount++;
+        // There is need to note the users that like a comment
+        s_likedComment[_postId][_commentId][msg.sender] = true;
+        // Add liker to an array of users that liked the comment
+        s_likersOfComment[_postId][_commentId].push(msg.sender);
+        
     }
     
     function getUser(address _userAddress) public view returns(User memory) {
@@ -381,6 +383,12 @@ contract SocialMedia {
     function getCommentByPostIdAndCommentId(uint256 _postId, uint256 _commentId) public view returns(Comment memory) {
         return s_postIdToComments[_postId][_commentId];
     }
+
+    function getCommentLikersByPostIdAndCommentId(uint256 _postId, uint256 _commentId) public view returns(address[] memory) {
+        return s_likersOfComment[_postId][_commentId];
+    }
+
+
     function getUserComments(address _userAddress) public view returns(Comment[] memory) {
         // Implementation to retrieve all comments by a user
         return userComments[_userAddress];

@@ -791,4 +791,54 @@ contract SocialMediaTest is Test {
         // assert that commenter is now the zero address i.e. commenter address is deleted
         assertEq(retrievedAddress, address(0));
     }
+
+    ////////////////////////
+    // Like Comment Tests //
+    ////////////////////////
+
+    // Test reverts as expected - Test passes
+    function testCantLikeCommentIfNotARegisteredUser() public registerThreeUsersAndPost {
+        // Test is expected to revert because we will prank a user who has not registered to attempt to like a comment of another user
+
+        // Get the address of the author of the first post 
+        address firstUser = socialMedia.getPostById(0).author;
+        string memory content = "Praise God";
+
+        vm.prank(firstUser);
+        socialMedia.createComment(0, content); // user 0 comments on their post 
+
+        vm.expectRevert(
+            SocialMedia.SocialMedia__UserDoesNotExist.selector
+        );
+        vm.prank(USER);
+        socialMedia.likeComment(0, 0);
+
+    }
+
+    // Test passes
+    function testRegisteredUserCanLikeComment() public registerThreeUsersAndPost {
+        // Test is expected to pass because a user will pay for deleting their post
+
+        // Get the address of the author of the first post 
+        address firstUser = socialMedia.getPostById(0).author;
+        address secondUser = socialMedia.getPostById(1).author;
+        string memory content = "Praise God";
+
+        vm.prank(firstUser);
+        socialMedia.createComment(0, content); // user 0 comments on their post 
+        vm.prank(secondUser);
+        socialMedia.likeComment(0, 0);
+        vm.stopPrank();
+
+        uint256 retrievedLikes = socialMedia.getCommentByPostIdAndCommentId(0,0).likesCount; // retrieve the number of likes of comment
+        address retrievedAddress = socialMedia.getCommentLikersByPostIdAndCommentId(0, 0)[0];
+
+        // assert that comment was liked i.e. likes = 1
+        assertEq(
+            retrievedLikes, 1
+        );
+
+        // assert that the comment was liked by secondUser
+        assertEq(retrievedAddress, secondUser);
+    }
 }
