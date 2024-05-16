@@ -27,9 +27,15 @@ pragma solidity ^0.8.18;
 import { PriceConverter } from "./PriceConverter.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
+import {VRFv2Consumer} from "./VRFv2Consumer.sol";
+
+import {AutomationCompatible} from "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
+
 
 contract SocialMedia {
     using PriceConverter for uint256;
+    VRFv2Consumer public vrfConsumer;
+
 
     //////////////
     /// Errors ///
@@ -86,6 +92,47 @@ contract SocialMedia {
 
     // Constants
     uint256 private constant MINIMUM_USD = 5e18;
+
+    // Mapping to store eligible users
+    // mapping(address => bool) public eligible_users;
+    address[] public eligibleUserAddresses;
+
+    //eligible users length
+    uint256 public mappingLength;
+
+
+    // Function to identify and mark eligible users
+    function identifyEligibleUsers() public  {
+        for (uint i = 0; i < s_users.length; i++) {
+            if (userPosts[s_users[i].userAddress].length > 10) {
+                mappingLength++;
+
+            eligibleUserAddresses.push(s_users[i].userAddress);   
+            }
+        }
+    }
+   
+      // Event for rewarding users
+    event RewardSent(address indexed user, uint256 amount);
+
+   function rewardUser() external {
+    // Get a random number within the range of eligible users
+    uint256 randomNumber = useRandomNumber();
+
+    // Identify eligible users
+    identifyEligibleUsers();
+
+    // Get the address of the randomly selected user
+    address randomUserAddress = eligibleUserAddresses[randomNumber];
+
+    // Transfer $5 to the selected user
+    uint256 amount = 5 ether; // $5 in wei
+    payable(randomUserAddress).transfer(amount);
+
+    // Emit an event
+    emit RewardSent(randomUserAddress, amount);
+   }
+    
 
     // Mappings
 
@@ -195,8 +242,10 @@ contract SocialMedia {
     ///////////////////
     /// Constructor ///
     ///////////////////
-    constructor(address priceFeed) {
+    constructor(address _vrfConsumerAddress,address priceFeed) {
         s_owner = msg.sender;
+        vrfConsumer = VRFv2Consumer(_vrfConsumerAddress);
+
         s_priceFeed = AggregatorV3Interface(priceFeed);
     }
     
@@ -410,10 +459,16 @@ contract SocialMedia {
     function transferContractBalance(address payable _to) public onlyOwner {
         _to.transfer(address(this).balance);
     }
-    
+
     
     function changeOwner(address _newOwner) public onlyOwner {
         s_owner = _newOwner;
     }
+    // Function to retrieve a random number from the VRFv2Consumer contract in between 0 to length of eligible users
+    function useRandomNumber() public view returns (uint256) {
+        // Call the getRandomNumber function from the VRFv2Consumer contract instance
+        return vrfConsumer.getRandomNumber(eligibleUserAddresses.length);
+    }
     
+
 }
