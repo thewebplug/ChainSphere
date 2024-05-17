@@ -24,15 +24,16 @@
 
 pragma solidity ^0.8.18;
 
+/// @dev Implements Chainlink VRFv2, Automation and Price Feed
+
+import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 import { PriceConverter } from "./PriceConverter.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-// import {VRFv2Consumer} from "./VRFv2Consumer.sol";
-
-// import {AutomationCompatible} from "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
 
 
-contract SocialMedia {
+contract SocialMedia is VRFConsumerBaseV2 {
     using PriceConverter for uint256;
     // VRFv2Consumer public vrfConsumer;
 
@@ -48,6 +49,14 @@ contract SocialMedia {
     error SocialMedia__OwnerCannotVote();
     error SocialMedia__AlreadyVoted(); 
     error SocialMedia__PaymentNotEnough();
+    error SocialMedia__UpkeepNotNeeded(
+                uint256 balance,
+                uint256 numOfEligibleAuthors
+            );
+    error SocialMedia__TransferFailed();
+    error SocialMedia__BatchTransferFailed(
+                        address winner
+                    );
     
     ///////////////////////////////////
     /// Type Declarations (Structs) ///
@@ -58,7 +67,6 @@ contract SocialMedia {
         string name;
         string bio;
         string profileImageHash;
-        // Post[] userPosts;
     }
     
     struct Post {
@@ -93,9 +101,23 @@ contract SocialMedia {
     // Constants
     uint256 private constant MINIMUM_USD = 5e18;
     uint256 private constant MIN_POST_SCORE = 10;
-    uint256 private constant VALIDITY_PERIOD = 30 days; // Period for which a post can be adjudged eligible for reward based on its postScore
+    uint256 private constant WINNING_REWARD = 0.01 ether;
+
+    // VRF2 Constants
+    uint16 private constant REQUEST_CONFIRMATIONS = 3;
+    uint32 private constant TEN = 10; // Maximum percentage of winners to be picked out of an array of eligible authors
+    uint32 private constant TWENTY = 20; // Number of eligible authors beyond which a maximum of 10% will be picked for award
 
 
+    // VRF2 Immutables
+    // @dev duration of the lottery in seconds
+    uint256 private immutable i_interval; // Period that must pass before a set of posts can be adjudged eligible for reward based on their postScore
+    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+    bytes32 private immutable i_gasLane;
+    uint64 private immutable i_subscriptionId;
+    uint32 private immutable i_callbackGasLimit;
+
+    uint256 private s_lastTimeStamp;
     // Mappings
 
     /** Variables Relating to User */
@@ -107,7 +129,8 @@ contract SocialMedia {
 
     /** Variables Relating to Post */
     Post[] s_posts; // array of all posts
-    Post[] s_recentPosts; // array of posts that are not more than VALIDITY_PERIOD old. This array is reset anytime authors have been picked for reward.
+    uint256[] s_idsOfRecentPosts; // array of posts that are not more than VALIDITY_PERIOD old. This array is reset anytime authors have been picked for reward.
+    Post[] s_postsEligibleForReward; // an array of eligible posts for display in the trending section on the frontend
     mapping(uint256 postId => Post) private s_idToPost; // get full details of a post using the postId
     
     mapping(address author => uint256 postId) private s_authorToPostId; // Get postId using address of the author 
@@ -116,7 +139,7 @@ contract SocialMedia {
     mapping(string name => address userAddress) private s_usernameToAddress; // get user address using their name
     mapping(address user => mapping(uint256 postId => bool voteStatus)) private s_hasVoted; //Checks if a user has voted for a post or not
     mapping(address user => Post[]) private userPosts; // gets all posts by a user using the user address
-    
+
 
     /** Variables Relating to Comment */
 
@@ -130,10 +153,13 @@ contract SocialMedia {
     /** Other Variables */
 
     address private s_owner; // would have made this variable immutable but for the changes_Owner function in the contract
-    address[] private s_authorsEligibleForReward; // An array of users eligible for rewards
-    mapping(address author => bool status) private s_authorEligibilityStatus; // variable that indicates whether or not the author of a post is eligible for a reward
-    mapping(uint256 postId => bool status) private  s_postMarkedAsEligibleForReward; // indicate that a post already qualifies author for reward and as such, author should not be qualified multiple times on the basis of one same post
-    
+    address[] private s_authorsEligibleForReward; // An array of users eligible for rewards. Addresses are marked payable so that winner can be paid
+
+    uint256[] private s_idsOfEligiblePosts; // array that holds postId of eligible posts for reward
+    uint256[] private s_idsOfRecentWinningPosts; // array that holds postId of the monst recent winning posts
+    uint32 private s_numOfWords; // number of random words to request from the Chainlink Oracle
+
+        
     //////////////
     /// Events ///
     //////////////
@@ -147,6 +173,8 @@ contract SocialMedia {
     event Downvoted(uint256 postId, string posthAuthorName, string downvoterName);
     // Event for rewarding users
     event RewardSent(address indexed user, uint256 amount);
+    event RequestWinningAuthor(uint256 requestId);
+    event PickedWinner(address winner);
     
     /////////////////
     /// Modifiers ///
@@ -207,22 +235,27 @@ contract SocialMedia {
         _;
     }
 
-    modifier isValid(uint256 _postId) {
-        uint256 presentTime = block.timestamp;
-        uint256 postTime = getPostById(_postId).timestamp;
-        if(presentTime - postTime >= VALIDITY_PERIOD){
-            revert();
-        }
-        _;
-    }
-
     ///////////////////
     /// Constructor ///
     ///////////////////
-    constructor(address priceFeed) {
+    constructor(
+        address priceFeed,
+        uint256 interval, 
+        address vrfCoordinator,
+        bytes32 gasLane,
+        uint64 subscriptionId,
+        uint32 callbackGasLimit,
+        address link,
+        uint256 deployerKey
+    ) VRFConsumerBaseV2(vrfCoordinator){
         s_owner = msg.sender;
-
         s_priceFeed = AggregatorV3Interface(priceFeed);
+        i_interval = interval;
+        s_lastTimeStamp = block.timestamp;
+        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinator);
+        i_gasLane = gasLane;
+        i_subscriptionId = subscriptionId;
+        i_callbackGasLimit = callbackGasLimit;
     }
     
     /////////////////
@@ -285,7 +318,7 @@ contract SocialMedia {
         
         userPosts[msg.sender].push(newPost); // Add the post to userPosts
         s_posts.push(newPost); // Add the post to the array of posts
-        s_recentPosts.push(newPost); // Add the post to the array of recent posts for possible nomination for reward
+        s_idsOfRecentPosts.push(newPost.postId); // Add the postId to the array of ids of recent posts for possible nomination for reward
         s_authorToPostId[msg.sender] = postId; // map post to the author
         s_postIdToAuthor[postId] = msg.sender;
         emit PostCreated(postId, nameOfUser);
@@ -397,7 +430,7 @@ contract SocialMedia {
     * @dev This function checks the the number of upvotes and number of downvotes of a post, calculates their difference to tell if the author of the post is eligible for rewards in that period.
     * @notice A user can be adjudged eligible on multiple grounds if they have multiple posts with significantly more number of upvotes than downvotes
      */
-    function _isPostEligibleForReward(uint256 _postId) private view isValid(_postId) returns(bool isEligible) {
+    function _isPostEligibleForReward(uint256 _postId) private view returns(bool isEligible) {
         uint256 numOfUpvotes = getPostById(_postId).upvotes; // get number of upvotes of post
         uint256 numOfDownvotes = getPostById(_postId).downvotes; // get number of downvotes of post
         uint256 postScore = numOfUpvotes - numOfDownvotes > 0 ? numOfUpvotes - numOfDownvotes : 0; // set minimum postScore to zero. We dont want negative values
@@ -409,25 +442,157 @@ contract SocialMedia {
     /**
     * @dev This function is to be called automatically using Chainlink Automation every VALIDITY_PERIOD (i.e. 30 days or as desirable). The function loops through an array of recentPosts and checks if posts are eligible for rewards and add the corresponding authors to an array of eligible authors for reward
      */
-    function _pickEligibleAuthors() private {
-        uint256 len = s_recentPosts.length; // number of recent posts
+    function _pickIdsOfEligiblePosts() internal {
+        uint256 len = s_idsOfRecentPosts.length; // number of recent posts
         uint256 i; // define the counter variable
 
         /** Loop through the array and pick posts that are eligible for reward */
         for(i; i < len; ){
             // Check if author is eligible for rewards and add their address to the array of eligible users
 
-            if(_isPostEligibleForReward(s_recentPosts[i].postId)){
-                uint256 postId = s_recentPosts[i].postId;
-                address postAuthAddress = s_postIdToAuthor[postId]; // get address of author
-                s_authorsEligibleForReward.push(postAuthAddress); // add address of author to list of authors eligible for reward
+            if(_isPostEligibleForReward(s_idsOfRecentPosts[i])){
+
+                s_idsOfEligiblePosts.push(s_idsOfRecentPosts[i]);
+                
             }
 
             unchecked {
                 i++;
             }
         }
+
     }
+
+    
+
+    /////////////////////////
+    // Chainlink Functions //
+    /////////////////////////
+
+    // 1. Get a random number
+    // 2. Use the random number to pick the winner
+    // 3. Be automatically called
+
+    // Chainlink Automation
+
+    // When is the winner supposed to be picked?
+    /**
+    * @dev This is the function that the Chainlink Automation nodes call
+    * to see if it's time to perform an upkeep.
+    * The following should be true for this to return true:
+    * 1. the time interval has passed between tournaments
+    * 2. there is at least 1 author eligible for reward
+    * 3. the contract has ETH (i.e. the Contract has received some payments)
+    * 4. (Implicit) the subscription is funded with LINK
+     */
+    function CheckUpkeep(
+        bytes memory /* checkData */
+    ) public returns(
+        bool upkeepNeeded, bytes memory /* performData */
+    ){
+        // call the _pickEligibleAuthors function to determine authors that are eligible for reward
+        _pickIdsOfEligiblePosts(); // this updates the s_authorsEligibleForReward array
+
+        bool timeHasPassed =  (block.timestamp - s_lastTimeStamp) >= i_interval; // checks if enough time has passed
+        bool hasBalance = address(this).balance > 0; // Contract has ETH
+        bool hasAuthors = s_idsOfEligiblePosts.length > 0; // Contract has players
+        upkeepNeeded = (timeHasPassed && hasBalance && hasAuthors);
+        return (upkeepNeeded, "0x0");
+    }   
+
+    function performUpkeep(
+        bytes calldata /* performData */
+    ) external {
+        // Checks
+        
+        (bool upkeepNeeded, ) = CheckUpkeep(" ");
+        if(!upkeepNeeded){
+            revert SocialMedia__UpkeepNotNeeded(
+                address(this).balance,
+                s_authorsEligibleForReward.length
+            );
+        }
+        
+        // Effects (on our Contract)
+
+        // reset the s_recentPosts array
+        s_idsOfRecentPosts = new uint256[](0); // reset the array of recent posts
+        s_lastTimeStamp = block.timestamp; // reset the timer for the next interval of posts to be considered
+
+        // 1. Request RNG from VRF
+        // 2. Receive the random number generated
+
+        // Interactions (with other Contracts)
+        s_numOfWords = s_idsOfEligiblePosts.length <= TWENTY ? 1 : uint32(s_idsOfEligiblePosts.length % TEN); // Pick one winner or a max ten percent of eligible winners
+        
+        uint256 requestId = i_vrfCoordinator.requestRandomWords(
+            i_gasLane,
+            i_subscriptionId,
+            REQUEST_CONFIRMATIONS,
+            i_callbackGasLimit,
+            s_numOfWords
+        );
+        
+        emit RequestWinningAuthor(requestId);
+    }
+
+    function fulfillRandomWords(
+        uint256 /*requestId*/,
+        uint256[] memory randomWords
+    ) internal override {
+        // Checks
+
+        // Effects (on our Contract)
+
+        s_idsOfRecentWinningPosts = new uint256[](0); // reset array of postId of most recent winning posts
+
+        if(randomWords.length == 1){
+            uint256 ranNumber = randomWords[0] % s_idsOfEligiblePosts.length;
+            uint256 idOfWinningPost = s_idsOfEligiblePosts[ranNumber]; // get the postId
+            s_idsOfRecentWinningPosts.push(idOfWinningPost);
+            address payable winner = payable(getPostById(idOfWinningPost).author);
+            
+            // s_authorsEligibleForReward = new address payable[](0); // reset the array of authors eligible for reward
+            
+            emit PickedWinner(winner);
+
+            // Interactions (With other Contracts)
+
+            // pay the winner
+            (bool success, ) = winner.call{value: WINNING_REWARD}("");
+            if(!success){
+                revert SocialMedia__TransferFailed();
+            }
+        } else {
+            uint256 len = randomWords.length;
+            uint256 i;
+            for(i; i < len; ){
+                uint256 ranNumber = randomWords[i] % s_idsOfEligiblePosts.length;
+                uint256 idOfWinningPost = s_idsOfEligiblePosts[ranNumber]; // get the postId
+                s_idsOfRecentWinningPosts.push(idOfWinningPost);
+                address payable winner = payable(getPostById(idOfWinningPost).author);
+                
+                emit PickedWinner(winner);
+
+                // Interactions (With other Contracts)
+
+                // pay the winner
+                (bool success, ) = winner.call{value: WINNING_REWARD}("");
+                if(!success){
+                    revert SocialMedia__BatchTransferFailed(
+                        winner
+                    );
+                }
+
+                unchecked {
+                    i++;
+                }
+            }
+            
+        }
+        
+    }
+
 
     //////////////////////
     // Getter Functions //

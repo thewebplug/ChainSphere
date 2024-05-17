@@ -5,6 +5,7 @@ pragma solidity ^0.8.18;
 import { Test, console} from "forge-std/Test.sol";
 import { SocialMedia } from "../src/SocialMedia.sol";
 import { DeploySocialMedia } from "../script/DeploySocialMedia.s.sol";
+import { HelperConfig } from "../script/HelperConfig.s.sol";
 
 contract SocialMediaTest is Test {
     
@@ -41,6 +42,7 @@ contract SocialMediaTest is Test {
     // Declaring variable types
     SocialMedia socialMedia;
     DeploySocialMedia deployer;
+    HelperConfig helperConfig;
 
     // Constants
     uint256 private constant STARTING_BALANCE = 10 ether;
@@ -65,7 +67,18 @@ contract SocialMediaTest is Test {
 
     function setUp() public {
         deployer = new DeploySocialMedia();
-        socialMedia = deployer.run();
+        (socialMedia, helperConfig) = deployer.run();
+
+        (
+            address priceFeed,
+        uint256 interval, 
+        address vrfCoordinator,
+        bytes32 gasLane,
+        uint64 subscriptionId,
+        uint32 callbackGasLimit,
+        address link,
+        
+        ) = helperConfig.activeNetworkConfig();
         vm.deal(USER, STARTING_BALANCE);
     }
 

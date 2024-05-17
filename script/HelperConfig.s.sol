@@ -4,10 +4,21 @@ pragma solidity ^0.8.18;
 
 import { Script } from "forge-std/Script.sol";
 import { MockV3Aggregator } from "../test/mocks/MockV3Aggregator.sol";
-// import { VRFCoordinatorV2Mock } from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
-// import { LinkToken } from "../test/mocks/LinkToken.sol";
+import { VRFCoordinatorV2Mock } from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
+import { LinkToken } from "../test/mocks/LinkToken.sol";
 
 contract HelperConfig is Script {
+    struct NetworkConfig {
+        address priceFeed;
+        uint256 interval;
+        address vrfCoordinator;
+        bytes32 gasLane;
+        uint64 subscriptionId;
+        uint32 callbackGasLimit;
+        address link;
+        uint256 deployerKey;
+    }
+
     // If we are on local anvil, deploy mocks otherwise
     // grab the existing address from the live network
 
@@ -15,58 +26,38 @@ contract HelperConfig is Script {
     uint8 public constant DECIMALS = 8;
     int256 public constant INITIAL_PRICE = 2000e8;
 
-    // set the active network configuration
+    uint256 public constant DEFAULT_ANVIL_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+    // set the variable that holds configuration for the 
+    // active network
     NetworkConfig public activeNetworkConfig;
 
-    // create a variable type that defines the return type for
-    // each of the configurations
-    struct NetworkConfig{
-        address priceFeed; //ETHUSD price feed address
-    }
-
-    // set the constructor function the selects the active network
-    // configuration on deployment
     constructor(){
-        // we use the chainid to determine the network of choice
-        // and thereafter set the active network configuration
         if(block.chainid == 11155111){
             activeNetworkConfig = getSepoliaEthConfig();
-        } else if(block.chainid == 1){
-            activeNetworkConfig = getMainnetEthConfig();
         } else{
             activeNetworkConfig = getOrCreateAnvilEthConfig();
         }
     }
 
-    function getSepoliaEthConfig() public pure returns(NetworkConfig memory){
-        // returns sepolia price feed address
-        // could return a bunch of other desired info too
-        // which is why we use 'Struct' to create the return type
-        // so that the Struct can be modified as desired
-        NetworkConfig memory sepoliaNetworkConfig = NetworkConfig({
-            priceFeed: 0x694AA1769357215DE4FAC081bf1f309aDC325306
+    function getSepoliaEthConfig() public view returns(NetworkConfig memory){
+        return NetworkConfig({
+            priceFeed: 0x694AA1769357215DE4FAC081bf1f309aDC325306, 
+            interval: 30,
+            vrfCoordinator: 0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625,//from Chainlink
+            gasLane: 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c, // the key hash from Chainlink
+            subscriptionId: 10914,
+            callbackGasLimit: 500_000, // 500,000 gas!
+            link: 0x779877A7B0D9E8603169DdbD7836e478b4624789,
+            deployerKey: vm.envUint("PRIVATE_KEY")
         });
-        return sepoliaNetworkConfig;
-    }
-
-    function getMainnetEthConfig() public pure returns(NetworkConfig memory){
-        // returns sepolia price feed address
-        // could return a bunch of other desired info too
-        // which is why we use 'Struct' to create the return type
-        // so that the Struct can be modified as desired
-        NetworkConfig memory ethConfig = NetworkConfig({
-            priceFeed: 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
-        });
-        return ethConfig;
     }
 
     function getOrCreateAnvilEthConfig() public returns(NetworkConfig memory){
-        // returns anvil price feed address
-
-        // we will only set an address if we didn't set it before
-        if(activeNetworkConfig.priceFeed != address(0)){
+        // we should only create the activeNetworkConfig once
+        if(activeNetworkConfig.vrfCoordinator != address(0)){
             return activeNetworkConfig;
         }
+
 
         // 1. Deploy the mocks
         // 2. return the mock contract address
@@ -77,11 +68,25 @@ contract HelperConfig is Script {
         );
         vm.stopBroadcast();
 
-        NetworkConfig memory anvilConfig = NetworkConfig({
-            priceFeed: address(mockPriceFeed)
+        uint96 baseFee = 0.25 ether; // i.e. 0.25 LINK
+        uint96 gasPriceLink = 1e9;
+        LinkToken link = new LinkToken();
+
+        vm.startBroadcast();
+        VRFCoordinatorV2Mock vrfCoordinatorMock = new VRFCoordinatorV2Mock(
+            baseFee, gasPriceLink
+        );
+        vm.stopBroadcast();
+
+        return NetworkConfig({
+            priceFeed: address(mockPriceFeed), 
+            interval: 30,
+            vrfCoordinator: address(vrfCoordinatorMock),//from the mock
+            gasLane: 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c, // the key hash from Chainlink
+            subscriptionId: 0,
+            callbackGasLimit: 500_000, // 500,000 gas!
+            link: address(link),
+            deployerKey: DEFAULT_ANVIL_KEY
         });
-
-        return anvilConfig;
     }
-
 }
