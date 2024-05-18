@@ -3,9 +3,9 @@
 pragma solidity ^0.8.18;
 
 import { Test, console} from "forge-std/Test.sol";
-import { SocialMedia } from "../src/SocialMedia.sol";
-import { DeploySocialMedia } from "../script/DeploySocialMedia.s.sol";
-import { HelperConfig } from "../script/HelperConfig.s.sol";
+import { SocialMedia } from "../../src/SocialMedia.sol";
+import { DeploySocialMedia } from "../../script/DeploySocialMedia.s.sol";
+import { HelperConfig } from "../../script/HelperConfig.s.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { VRFCoordinatorV2Mock } from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
 
@@ -108,6 +108,13 @@ contract SocialMediaTest is Test {
         
         vm.prank(USER);
         socialMedia.registerUser(myName, myBio, myImgHash);
+        _;
+    }
+
+    modifier skipFork(){
+        if(block.chainid != 31337){
+            return;
+        }
         _;
     }
 
@@ -1005,7 +1012,7 @@ contract SocialMediaTest is Test {
     function testFulfilRandomWordsCanOnlyBeCalledAfterPerformUpkeep(
         uint256 randomRequestId
     ) 
-    public registerTenUsersWhoPostAndCastVotes timePassed {
+    public registerTenUsersWhoPostAndCastVotes timePassed skipFork {
         vm.expectRevert("nonexistent request");
         VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(
             randomRequestId, 
@@ -1014,7 +1021,7 @@ contract SocialMediaTest is Test {
     }
     
     function testFulfilRandomWordsPicksAWinnerResetsAndSendsMoney() 
-        public registerTenUsersWhoPostAndCastVotes timePassed {
+        public registerTenUsersWhoPostAndCastVotes timePassed skipFork {
         
         uint256 WINNING_REWARD = 0.01 ether;
 
@@ -1045,7 +1052,7 @@ contract SocialMediaTest is Test {
     // Price Converter Tests //
     ///////////////////////////
     
-    function testCanGetPriceFromPriceFeedAndReturnValueInUsd() public {
+    function testCanGetPriceFromPriceFeedAndReturnValueInUsd() public skipFork {
         uint256 ethAmount = 0.5 ether;
         uint256 actualValue = 1000e18; // i.e. $1_000 recall the price of 1 ETH in our Anvil chain is $2_000
         uint256 expectedValue = socialMedia.getUsdValueOfEthAmount(ethAmount);

@@ -119,6 +119,27 @@ To see the test coverage so far, run the following command
 forge coverage
 ```
 
+To test our code on Anvil using the Makefile, we run the following command
+```bash
+make test
+```
+
+To test our code on the Sepolia testnet using the Makefile, we run the following command
+```bash
+make test-sepolia
+```
+
+
+## Makefile
+A Makefile makes it possible for us to assign nicknames or aliases to our commands thus, not having to type lengthy lines to code to perform especially tasks that are repetitive.
+For instance, with our Makefile, if we want to deploy and verify our smart contract on Sepolia Testnet, all we need is to run the following command
+```bash
+make deploy-sepolia
+```
+without the Makefile, we will pass the following command
+```bash
+forge script script/DeploySocialMedia.s.sol:DeploySocialMedia --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvv
+```
 
 
 Tasks Carried Out:
@@ -243,4 +264,8 @@ Tasks Carried Out:
     - The function emits the `RequestId` after successful execution. Test passed.
 3. Tested the `fulfillRandomWords` function.
     - the function can only be called after `performUpkeep`. The fuzz test passed
-    
+
+
+Task Carried Out
+1. Added a `Makefile` to our code base. A Makefile makes it possible for us to assign nicknames to our commands thus, not having to type lengthy lines to code to perform especially tasks that are repetitive.
+2. Tested our Smart Contract on the Sepolia Testnet and all tests passed.
