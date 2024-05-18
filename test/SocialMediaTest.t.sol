@@ -6,6 +6,9 @@ import { Test, console} from "forge-std/Test.sol";
 import { SocialMedia } from "../src/SocialMedia.sol";
 import { DeploySocialMedia } from "../script/DeploySocialMedia.s.sol";
 import { HelperConfig } from "../script/HelperConfig.s.sol";
+import { Vm } from "forge-std/Vm.sol";
+import { VRFCoordinatorV2Mock } from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
+
 
 contract SocialMediaTest is Test {
     
@@ -44,12 +47,22 @@ contract SocialMediaTest is Test {
     DeploySocialMedia deployer;
     HelperConfig helperConfig;
 
+    address priceFeed;
+    uint256 interval;
+    address vrfCoordinator;
+    bytes32 gasLane;
+    uint64 subscriptionId;
+    uint32 callbackGasLimit;
+    address link;
+
     // Constants
     uint256 private constant STARTING_BALANCE = 10 ether;
     uint256 private constant EDITING_FEE = 0.004 ether;
 
     // create a fake user
     address USER = makeAddr("user");
+
+    address[] userAddresses;
 
     // struct instances
     Post post;
@@ -70,13 +83,13 @@ contract SocialMediaTest is Test {
         (socialMedia, helperConfig) = deployer.run();
 
         (
-            address priceFeed,
-        uint256 interval, 
-        address vrfCoordinator,
-        bytes32 gasLane,
-        uint64 subscriptionId,
-        uint32 callbackGasLimit,
-        address link,
+            priceFeed,
+            interval, 
+            vrfCoordinator,
+            gasLane,
+            subscriptionId,
+            callbackGasLimit,
+            link,
         
         ) = helperConfig.activeNetworkConfig();
         vm.deal(USER, STARTING_BALANCE);
@@ -854,4 +867,192 @@ contract SocialMediaTest is Test {
         // assert that the comment was liked by secondUser
         assertEq(retrievedAddress, secondUser);
     }
+
+    ///////////////////////
+    ///  checkUpkeep    ///
+    ///////////////////////
+
+    modifier timePassed(){
+        vm.warp(block.timestamp + interval + 2);
+        vm.roll(block.number + 2);
+        _;
+    }
+
+    modifier registerTenUsersWhoPostAndCastVotes() {
+        string[10] memory names = [
+            "Maritji", "Songrit", "Jane", "Tanaan", "John",
+            "Spytex", "Afan", "Nenpan", "Smith", "Rose"
+        ];
+        string memory myBio = "I love to code";
+        string memory myImgHash = "";
+        string memory myContent = "Come and See";
+        string memory newContent = "Praise God";
+        
+        uint256 len = names.length;
+        uint256 i;
+        uint256 j;
+        
+        // Register the users using a for loop
+        for(i = 0; i <len; ){
+            // Create a fake user and assign them a starting balance
+            
+            address newUser = makeAddr(string(names[i])); 
+            vm.deal(newUser, STARTING_BALANCE);
+            vm.startPrank(newUser);
+            // register newUser
+            socialMedia.registerUser(names[i], myBio, myImgHash);
+            // newUser makes a post
+            socialMedia.createPost(myContent, myImgHash);
+            vm.stopPrank();
+
+            userAddresses.push(newUser); // add user to an array of users
+
+            unchecked {
+                i++;
+            }
+        }
+        
+        // cast upvotes to the posts
+        for(i = 0; i <len; ){
+            address currentUser = userAddresses[i];
+            vm.startPrank(currentUser);
+            socialMedia.editPost{value: EDITING_FEE}(i, newContent, myImgHash); // edit post
+            vm.stopPrank();
+
+            for(j = ++i; j < len; ){
+                vm.startPrank(currentUser);
+                socialMedia.upvote(j); // cast upvote on another's post
+                vm.stopPrank();
+
+                unchecked {
+                    j++;
+                }
+            }
+            
+            unchecked {
+                i++;
+            }
+        }
+        _;
+    }
+
+    function testCheckUpkeepReturnsFalseIfContractHasNoBalance() public timePassed {
+        
+        (bool upkeepNeeded, ) = socialMedia.CheckUpkeep(" ");
+        assert(!upkeepNeeded);
+    }
+
+    function testCheckUpkeepReturnsFalseIfEnoughTimeHasNotPassed() public registerTenUsersWhoPostAndCastVotes {
+        
+        (bool upkeepNeeded, ) = socialMedia.CheckUpkeep(" ");
+        assert(!upkeepNeeded);
+    }
+
+    function testCheckUpkeepReturnsTrueWhenParametersAreGood() public registerTenUsersWhoPostAndCastVotes timePassed {
+        
+        (bool upkeepNeeded, ) = socialMedia.CheckUpkeep(" ");
+        // vm.prank(socialMedia.getContractOwner());
+        // uint256 balance = socialMedia.getBalance();
+        
+        // uint256 recentPosts = socialMedia.getIdsOfRecentPosts().length;
+        // uint256 eligiblePosts = socialMedia.getIdsOfEligiblePosts().length;
+
+        // console.log(balance);
+        // console.log(recentPosts);
+        // console.log(eligiblePosts);
+        // console.log(upkeepNeeded);
+        assert(upkeepNeeded);
+    }
+
+    ///////////////////////
+    ///  performUpkeep  ///
+    //////////////////////
+    function testPerformUpkeepCanOnlyRunIfCheckUpkeepIsTrue() public registerTenUsersWhoPostAndCastVotes timePassed {
+        
+        socialMedia.performUpkeep(" ");
+
+    }
+
+    function testPerformUpkeepRevertsIfCheckUpkeepIsFalse() public {
+        vm.prank(socialMedia.getContractOwner());
+        uint256 currentBalance = socialMedia.getBalance();
+        uint256 eligiblePosts = socialMedia.getIdsOfEligiblePosts().length;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SocialMedia.SocialMedia__UpkeepNotNeeded.selector,
+                currentBalance,
+                eligiblePosts
+            )
+        );
+        socialMedia.performUpkeep(" ");
+
+    }
+
+    function testPerformUpkeepEmitsRequestId() 
+        public registerTenUsersWhoPostAndCastVotes timePassed {
+        vm.recordLogs(); // saves all output logs
+        socialMedia.performUpkeep(" "); // emits requestId
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestId = entries[0].topics[1];
+
+        assert(uint256(requestId) > 0);
+    }
+
+
+    ////////////////////////
+    ///fulfilRandomWords ///
+    //////////////////////
+    function testFulfilRandomWordsCanOnlyBeCalledAfterPerformUpkeep(
+        uint256 randomRequestId
+    ) 
+    public registerTenUsersWhoPostAndCastVotes timePassed {
+        vm.expectRevert("nonexistent request");
+        VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(
+            randomRequestId, 
+            address(socialMedia)
+        );
+    }
+    
+    function testFulfilRandomWordsPicksAWinnerResetsAndSendsMoney() 
+        public registerTenUsersWhoPostAndCastVotes timePassed {
+        
+        uint256 WINNING_REWARD = 0.01 ether;
+
+        vm.recordLogs(); // saves all output logs
+        socialMedia.performUpkeep(" "); // emits requestId
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestId = entries[0].topics[2];
+
+        VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(
+            uint256(requestId), 
+            address(socialMedia)
+        );
+
+
+        // assert(socialMedia.getIdsOfEligiblePosts() != address(0));
+        // assert(socialMedia.getLengthOfPlayers() == 0);
+        // assert(previousTimeStamp < socialMedia.getLastTimeStamp());
+        address winnerAddress = socialMedia.getPostById(
+            socialMedia.getRecentWinners()[0]
+        ).author;
+        console.log(winnerAddress.balance);
+        console.log(STARTING_BALANCE + WINNING_REWARD - EDITING_FEE);
+        assert(socialMedia.getRecentWinners().length == 1); // Only one winner was picked
+        assert(winnerAddress.balance > STARTING_BALANCE);
+    }
+
+    ///////////////////////////
+    // Price Converter Tests //
+    ///////////////////////////
+    
+    function testCanGetPriceFromPriceFeedAndReturnValueInUsd() public {
+        uint256 ethAmount = 0.5 ether;
+        uint256 actualValue = 1000e18; // i.e. $1_000 recall the price of 1 ETH in our Anvil chain is $2_000
+        uint256 expectedValue = socialMedia.getUsdValueOfEthAmount(ethAmount);
+        assertEq(actualValue, expectedValue);
+    }
+
+    ///////////////////////////
+    //Getter Functions Tests //
+    ///////////////////////////
 }

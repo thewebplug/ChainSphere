@@ -100,7 +100,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
 
     // Constants
     uint256 private constant MINIMUM_USD = 5e18;
-    uint256 private constant MIN_POST_SCORE = 10;
+    uint256 private constant MIN_POST_SCORE = 5;
     uint256 private constant WINNING_REWARD = 0.01 ether;
 
     // VRF2 Constants
@@ -434,9 +434,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
         uint256 numOfUpvotes = getPostById(_postId).upvotes; // get number of upvotes of post
         uint256 numOfDownvotes = getPostById(_postId).downvotes; // get number of downvotes of post
         uint256 postScore = numOfUpvotes - numOfDownvotes > 0 ? numOfUpvotes - numOfDownvotes : 0; // set minimum postScore to zero. We dont want negative values
-        if(postScore > MIN_POST_SCORE){
-            isEligible = true; // a post is adjudged eligible for reward if the post has ten (10) more upvotes than downvotes
-        }
+        isEligible = postScore >= MIN_POST_SCORE ? true : false; // a post is adjudged eligible for reward if the post has ten (10) more upvotes than downvotes
     }
 
     /**
@@ -461,6 +459,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
             }
         }
 
+        // return s_idsOfEligiblePosts;
     }
 
     
@@ -491,7 +490,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
         bool upkeepNeeded, bytes memory /* performData */
     ){
         // call the _pickEligibleAuthors function to determine authors that are eligible for reward
-        _pickIdsOfEligiblePosts(); // this updates the s_authorsEligibleForReward array
+        _pickIdsOfEligiblePosts(); // this updates the s_idsOfEligiblePosts array
 
         bool timeHasPassed =  (block.timestamp - s_lastTimeStamp) >= i_interval; // checks if enough time has passed
         bool hasBalance = address(this).balance > 0; // Contract has ETH
@@ -509,16 +508,13 @@ contract SocialMedia is VRFConsumerBaseV2 {
         if(!upkeepNeeded){
             revert SocialMedia__UpkeepNotNeeded(
                 address(this).balance,
-                s_authorsEligibleForReward.length
+                s_idsOfEligiblePosts.length
             );
         }
         
         // Effects (on our Contract)
 
-        // reset the s_recentPosts array
-        s_idsOfRecentPosts = new uint256[](0); // reset the array of recent posts
-        s_lastTimeStamp = block.timestamp; // reset the timer for the next interval of posts to be considered
-
+        
         // 1. Request RNG from VRF
         // 2. Receive the random number generated
 
@@ -552,8 +548,10 @@ contract SocialMedia is VRFConsumerBaseV2 {
             s_idsOfRecentWinningPosts.push(idOfWinningPost);
             address payable winner = payable(getPostById(idOfWinningPost).author);
             
-            // s_authorsEligibleForReward = new address payable[](0); // reset the array of authors eligible for reward
-            
+            // reset the s_recentPosts array
+            s_idsOfRecentPosts = new uint256[](0); // reset the array of recent posts
+            s_lastTimeStamp = block.timestamp; // reset the timer for the next interval of posts to be considered
+
             emit PickedWinner(winner);
 
             // Interactions (With other Contracts)
@@ -596,7 +594,25 @@ contract SocialMedia is VRFConsumerBaseV2 {
 
     //////////////////////
     // Getter Functions //
-    //////////////////////    
+    //////////////////////  
+
+    function getUsdValueOfEthAmount(uint256 _ethAmount) public view returns(uint256){
+        uint256 usdValue = _ethAmount.getConversionRate(s_priceFeed);
+        return usdValue;
+    }
+
+    function getRecentWinners() public view returns(uint256[] memory) {
+        return s_idsOfRecentWinningPosts;
+    }
+
+    function getIdsOfRecentPosts() public view returns(uint256[] memory){
+        return s_idsOfRecentPosts;
+    }
+
+    function getIdsOfEligiblePosts() public view returns(uint256[] memory){
+        return s_idsOfEligiblePosts;
+    }  
+
     function getUser(address _userAddress) public view returns(User memory) {
         return s_addressToUserProfile[_userAddress];
     }
