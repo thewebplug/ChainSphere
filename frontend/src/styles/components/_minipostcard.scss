@@ -1,0 +1,197 @@
+.mini-post-card {
+    min-width: 300px;
+    max-width: 300px;
+    // height: 200px;
+    background: #302c3057;
+    display: flex;
+    gap: 5px;
+    padding: 14px;
+    border-radius: 12px;
+    cursor: pointer;
+
+    &__img {
+      min-width: 25px;
+      height: 25px;
+      border-radius: 50%;
+    }
+    &__content {
+      &__title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 14px;
+
+        & > :first-child {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          & > :first-child {
+            font-weight: 500;
+          }
+          & > :last-child {
+            color: #aaa;
+            font-size: 12px;
+          }
+        }
+
+        & > svg {
+          width: 20px;
+          cursor: pointer;
+        }
+      }
+
+      &__post {
+        margin-top: 0.7rem;
+        font-size: 12px;
+
+        &__img {
+          width: 100%;
+          height: 100px;
+          object-fit: cover;
+          margin-top: 1.4rem;
+          border-radius: 14px;
+        }
+      }
+
+      &__actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        margin-top: 1rem;
+
+        & > div {
+          font-size: 1.2rem;
+          display: flex;
+          align-items: center;
+        }
+
+        &__comment {
+          gap: 6px;
+
+          & > svg {
+            width: 10px;
+            cursor: pointer;
+          }
+        }
+
+        &__like {
+          gap: 4px;
+
+          &:hover {
+            color: #1d9bf0;
+            & > svg {
+              path {
+                fill: #1d9bf0;
+              }
+            }
+          }
+
+          & > svg {
+            width: 14px;
+          }
+        }
+        &__share {
+          &:hover {
+            color: #1d9bf0;
+            & > svg {
+              g {
+                path {
+                  stroke: #1d9bf0;
+                }
+              }
+            }
+          }
+
+          & > svg {
+            width: 20px;
+          }
+        }
+      }
+
+      &__form {
+        width: 100%;
+        border: 1px solid #ffffff33;
+        padding: 10px;
+        display: grid;
+        grid-template-columns: 40px auto;
+        gap: 5px;
+        border-radius: 48px;
+        margin-top: 24px;
+        margin-bottom: 24px;
+
+        & > img {
+          width: 100%;
+          height: 40px;
+          border-radius: 50%;
+        } 
+
+        & > input {
+          width: 100%;
+          height: 40px;
+          background: transparent;
+          border: none;
+          outline: none;
+          color: #FFF;
+
+          &::placeholder {
+            color: #FFF;
+          }
+        }
+      }
+
+      &__comments {
+
+        &__card {
+          width: 100%;
+          border: 0.1px solid #ffffff33;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+    cursor: pointer;
+    transition: 0.2s;
+    margin-bottom: 10px;
+
+    //   display: none;
+
+    &__img {
+      min-width: 40px;
+      height: 40px;
+      border-radius: 50%;
+    }
+
+    &__content {
+
+      &__title {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+      
+          & > :first-child {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            & > :first-child {
+              font-weight: 500;
+            }
+            & > :last-child {
+              color: #aaa;
+            }
+          }
+      
+          & > svg {
+            width: 20px;
+            cursor: pointer;
+          }
+      }
+
+      &__post {
+        margin-top: 0.7rem;
+    }
+  }
+        }
+      }
+    }
+  }

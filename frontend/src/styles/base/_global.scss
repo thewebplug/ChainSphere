@@ -1,0 +1,32 @@
+html {
+  // font-size: 62.5%;
+  font-size: calc(100vw / 1440 * 10);
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+
+  @media (min-width: 1440px) {
+    font-size: 62.5%;
+  }
+}
+
+
+* {
+  font-family: Montserrat;
+}
+
+body {
+    font-size: $text-normal;
+    color: $text-color;
+    font-family: Inter, sans-serif;
+    background: #15202B;
+  }
+
+
+  button {
+    color: rgba(255, 255, 255, 1);
+  }
+
+
+  .pointer {
+    cursor: pointer;
+  }

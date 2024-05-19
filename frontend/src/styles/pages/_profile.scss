@@ -1,0 +1,186 @@
+.profile {
+    &__main {
+      width: 100%;
+      max-width: 1280px;
+      margin: auto;
+      display: grid;
+      padding: 40px 40px 0 40px;
+      grid-template-columns: 1fr 2.2fr 1fr;
+      gap: 60px;
+      height: 100vh;
+  
+     
+      &__timeline {
+        width: 100%;
+        height: 100%;
+  
+        &__nav {
+          display: flex;
+          align-items: center;
+          font-size: 1.8rem;
+          gap: 24px;
+          background: #1a171a57;
+          border-radius: 16px;
+          padding: 16px;
+  
+          & > h1 {
+            min-width: 60px;
+            padding-bottom: 10px;
+            text-align: center;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+            cursor: pointer;
+          }
+  
+          &__active {
+            border-bottom: 3px solid #208bfe !important;
+          }
+        }
+  
+        &__cards {
+          margin-top: 20px;
+          height: 80vh;
+          overflow-y: auto;
+          &::-webkit-scrollbar {
+            display: none;
+          }
+  
+  
+        }
+        &__form {
+          margin-top: 20px;
+          height: 80vh;
+          padding: 0 40px;
+
+          &__img {
+              position: relative;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+
+            & > img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                border-radius: 50%;
+
+            }
+
+            & > svg {
+                position: absolute;
+                top: -1px;
+                right: -1px;
+                cursor: pointer;
+            }
+          }
+  
+          &__input {
+            width: 100%;
+            height: 48px;
+            border-radius: 24px;
+            background: transparent;
+            border: 0.5px solid #FFF;
+            padding-left: 14px;
+            outline: none;
+            margin-top: 20px;
+            color: #FFF;
+              &::placeholder {
+                  color: #FFF;
+              }
+    
+            &:focus {
+              border: none;
+              outline: 1px solid rgba(77, 62, 255, 0.9);
+            }
+          }
+
+          &__button {
+            width: 100%;
+            height: 50px;
+            border-radius: 24px;
+            background: #1d9bf0;
+            border: none;
+            outline: none;
+            font-size: 18px;
+            font-weight: 700;
+            margin-top: 24px;
+            margin-bottom: 12px;
+          }
+  
+        }
+      }
+      &__links {
+        width: 100%;
+        height: fit-content;
+        background: #1a171a57;
+        border-radius: 16px;
+        padding: 20px 20px 80px 20px;
+  
+        &__profile-group {
+          display: flex;
+          align-items: start;
+          gap: 10px;
+  
+          &__img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+          }
+  
+          &__name {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+        }
+  
+        &__trending {
+          display: flex;
+          align-items: center;
+          // font-size: 1.8rem;
+          gap: 4px;
+          font-weight: 700;
+          width: fit-content;
+          white-space: nowrap;
+          padding: 0 38px 0 14px;
+          height: 54px;
+          border-radius: 32px;
+          margin-top: 2.4rem;
+          cursor: pointer;
+          &:hover {
+            background: #302c3057;
+          }
+          & > svg {
+            width: 25px;
+          }
+  
+          &__profile-svg {
+            width: 22px !important;
+          }
+        }
+  
+        &__divider {
+          width: 100%;
+          height: 1px;
+          background: #2c2a2a;
+          margin: 2rem 0;
+        }
+  
+        &__links-group {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-size: 1.4rem;
+          font-weight: 500;
+  
+          & > a:hover {
+            text-decoration: underline;
+          }
+        }
+      }
+  
+      
+    }
+  }
+  
+

@@ -1,0 +1,177 @@
+.sidebar {
+    &__inner {
+      width: 100%;
+      height: 240px;
+      background: #1a171a57;
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      &__logo {
+        font-size: 2.4rem;
+        margin-bottom: 2rem;
+        font-weight: 700;
+      }
+
+      &__group {
+        display: flex;
+        align-items: center;
+        font-size: 1.8rem;
+        gap: 20px;
+        font-weight: 700;
+        width: fit-content;
+        padding: 0 38px 0 14px;
+        height: 54px;
+        border-radius: 32px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        &:hover {
+          background: #302c3057;
+        }
+        & > svg {
+          width: 30px;
+        }
+
+        &__profile-svg {
+          width: 22px !important;
+        }
+      }
+
+      &__group-active {
+        background: #302c3057;
+      }
+    }
+
+    &__button {
+      width: 100%;
+      height: 50px;
+      border-radius: 40px;
+      background: #1d9bf0;
+      font-size: 1.8rem;
+      font-weight: 700;
+      border: none;
+      outline: none;
+      margin-top: 2.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: 0.4s;
+
+      &:hover {
+        background: transparent;
+        color: #1d9bf0;
+        border: 1px solid #1d9bf0;
+
+        & > svg {
+          g {
+            path {
+              fill: #1d9bf0;
+              stroke: #1d9bf0;
+            }
+          }
+        }
+      }
+
+      & > svg {
+        width: 20px;
+      }
+    }
+
+    &__modal {
+        width: 100%;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        background: rgba(0, 0, 0, 0.24);
+  
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+  
+        &__inner {
+          width: 560px;
+          height: fit-content;
+          background: #15202b;
+          border-radius: 16px;
+          padding: 24px;
+  
+          &__grid {
+            display: grid;
+            grid-template-columns: 60px 1fr;
+            gap: 20px;
+  
+            &__img {
+              width: 60px;
+              height: 60px;
+              border-radius: 50%;
+            }
+  
+            &__form {
+              &__input {
+                width: 100%;
+                height: 200px;
+                border-radius: 14px;
+                padding-top: 20px;
+                padding-left: 20px;
+                background: #302c3057;
+                border: none;
+                outline: none;
+                color: #fff;
+              }
+    
+              &__flex {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-top: 10px;
+  
+                &__button-group {
+                  display: flex;
+                  align-items: center;
+                  gap: 10px;
+                  & > button {
+                    width: 80px;
+                  height: 40px;
+                  border-radius: 24px;
+                  background: #1d9bf0;
+                  border: none;
+                  outline: none;
+                  }
+  
+                  & > :first-child {
+                    background: none;
+                    color: #1d9bf0;
+                    border: 1px solid #1d9bf0;
+                  }
+                }
+              }
+  
+              &__img {
+                width: 100%;
+                height: 200px;
+                margin-top: 10px;
+                position: relative;
+  
+                & > svg {
+                  cursor: pointer;
+                  position: absolute;
+  top: -10px;
+  right: -10px;
+                }
+  
+                & > img {
+                  width: 100%;
+                  height: 100%;
+                  border-radius: 14px;
+                  object-fit: cover;
+                }
+              }
+            }
+          }
+        }
+      }
+  }

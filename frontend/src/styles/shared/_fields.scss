@@ -1,0 +1,25 @@
+%normal-input {
+        width: 100%;
+          border: none;
+          outline: none;
+          background-color: #f0f0f0;
+          height: 50px;
+          border-radius: 7px;
+          padding: 5px;
+          margin-top: 1rem;
+}
+
+%normal-textarea {
+    width: 100%;
+          border: none;
+          outline: none;
+          height: 180px !important;
+          background-color: #f0f0f0;
+          height: 50px;
+          border-radius: 7px;
+          padding: 5px;
+}
+
+%normal-label {
+    font-size: 1.4rem;
+}

@@ -1,0 +1,207 @@
+.auth {
+    width: 100%;
+    max-width: 1440px;
+    margin: auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 100vh;
+    overflow-y: auto;
+  
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    &__card1 {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      // justify-content: center;
+      padding: 120px 0;
+  
+      &__logo {
+        display: flex;
+        align-items: center;
+        font-size: 2.4rem;
+        font-weight: 700;
+        gap: 5px;
+        margin-bottom: 8rem;
+        color: #FFF;
+      }
+  
+      &__title {
+        font-size: 36px;
+        font-weight: 700;
+        margin-bottom: 0.8rem;
+        // font-family: "Bricolage Grotesque";
+      }
+  
+      &__form {
+        display: flex;
+        flex-direction: column;
+        &__input {
+          width: 420px;
+          height: 48px;
+          border-radius: 24px;
+          background: transparent;
+          border: 0.5px solid #FFF;
+          padding-left: 14px;
+          outline: none;
+          margin-top: 20px;
+            &::placeholder {
+                color: #FFF;
+            }
+  
+          &:focus {
+            border: none;
+            outline: 1px solid rgba(77, 62, 255, 0.9);
+          }
+        }
+
+        &__option {
+          width: 420px;
+          font-size: 12px;
+          text-align: center;
+          font-weight: 700;
+          margin-top: 10px;
+          margin-bottom: -10px;
+        }
+
+        &__input-group {
+          width: 420px;
+          display: grid;
+          grid-template-columns: 2fr 1fr;
+          gap: 5px;
+          margin-top: 20px;
+
+          &__input {
+            width: 100%;
+          height: 48px;
+          border-radius: 24px;
+          background: transparent;
+          border: 0.5px solid #FFF;
+          color: #FFF;
+          padding-left: 14px;
+          outline: none;
+            &::placeholder {
+                color: #FFF;
+            }
+  
+          &:focus {
+            border: none;
+            outline: 1px solid rgba(77, 62, 255, 0.9);
+          }
+          }
+
+          &__button {
+            width: 100%;
+            height: 48px;
+            border-radius: 24px;
+            background: #1d9bf0;
+            border: none;
+            outline: none;
+            font-size: 12px;
+            font-weight: 700;
+          }
+        }
+  
+        &__userType {
+          margin-top: 1rem;
+          font-size: 14px;
+          font-weight: 500;
+          text-align: center;
+          margin-bottom: 2rem;
+        }
+  
+        &__userType-group {
+          display: flex;
+          align-items: center;
+          gap: 30px;
+          width: 275px;
+          margin: auto;
+          margin-bottom: 12px;
+  
+          & > div {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            //styleName: 16/16 - Med;
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: -0.011em;
+            color: #FFF;
+          }
+        }
+  
+        &__button {
+          width: 420px;
+          height: 50px;
+          border-radius: 24px;
+          background: #1d9bf0;
+          border: none;
+          outline: none;
+          font-size: 18px;
+          font-weight: 700;
+          margin-top: 24px;
+          margin-bottom: 12px;
+        }
+  
+        &__login {
+          text-align: center;
+          font-family: Inter;
+          font-size: 14px;
+          font-weight: 500;
+  
+          span {
+            color: #1d9bf0;
+            font-weight: 600;
+          }
+        }
+      }
+    }
+    &__card2 {
+      width: 100%;
+      height: 100%;
+      background: url("../../assets/blockchain.webp");
+      background-size: cover;
+      background-position: center;
+  
+      &__carousel {
+        width: 523px;
+        // height: 265px;
+        border-radius: 40px;
+        background: rgba(0, 0, 0, 0.434);
+        margin: auto;
+        margin-top: 100px;
+        padding: 20px 30px;
+        // font-family: "Bricolage Grotesque";
+        position: relative;
+  
+        &__title {
+          font-size: 40px;
+          font-weight: 700;
+          line-height: 50px;
+          span {
+            color: #1d9bf0;
+          }
+          margin-bottom: 1.6rem;
+        }
+  
+        &__subtitle {
+          // font-family: Roboto;
+          font-size: 20px;
+          font-weight: 400;
+        }
+  
+        &__nav-group {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          position: absolute;
+          bottom: 20px;
+          right: 30px;
+        }
+      }
+    }
+  }
+  
