@@ -189,8 +189,12 @@ contract SocialMedia is VRFConsumerBaseV2 {
         _;
     }
     
-    modifier onlyPostOwner(uint _postId) {
-        if(msg.sender !=  s_postIdToAuthor[_postId]){
+     modifier onlyPostOwner(uint256 _postId) {
+        if (_postId >= s_posts.length) {
+            revert SocialMedia_postnotExists();
+        }
+
+        if (msg.sender != s_postIdToAuthor[_postId]) {
             revert SocialMedia__NotPostOwner();
         }
         _;
