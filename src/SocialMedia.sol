@@ -256,6 +256,13 @@ contract SocialMedia is VRFConsumerBaseV2 {
         _;
     }
 
+    modifier postExists(uint256 _postID){
+        if (_postID >= s_posts.length) {
+            revert SocialMedia_postnotExists();
+        }
+        _;
+    }
+
     ///////////////////
     /// Constructor ///
     ///////////////////
