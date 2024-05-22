@@ -42,6 +42,8 @@ contract SocialMedia is VRFConsumerBaseV2 {
     /// Errors ///
     //////////////
     error SocialMedia__NotOwner();
+    error SocialMedia_postnotExists();
+    error SocialMedia_commentnotExists();
     error SocialMedia__NotPostOwner();
     error SocialMedia__NotCommentOwner();
     error SocialMedia__UsernameAlreadyTaken();
@@ -195,13 +197,17 @@ contract SocialMedia is VRFConsumerBaseV2 {
     }
     
     modifier onlyCommentOwner(uint256 _postId, uint256 _commentId) {
-    require(_postId < s_posts.length, "SocialMedia: Post does not exist");
-
-    require(_commentId < s_postIdToComments[_postId].length, "SocialMedia: Comment does not exist");
-
-    require(msg.sender == s_postAndCommentIdToAddress[_postId][_commentId], "SocialMedia: Not the owner of the comment");
-    _;
-}
+        if (_postId >= s_posts.length) {
+            revert SocialMedia_postnotExists();
+        }
+        if (_commentId >= s_postIdToComments[_postId].length) {
+            revert SocialMedia_commentnotExists();
+        }
+        if (msg.sender != s_postAndCommentIdToAddress[_postId][_commentId]) {
+            revert SocialMedia__NotCommentOwner();
+        }
+        _;
+    }
     
     modifier usernameTaken(string memory _name) {
         if(s_usernameToAddress[_name] != address(0)){
