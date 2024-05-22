@@ -417,9 +417,9 @@ contract SocialMedia is VRFConsumerBaseV2 {
     }
     
     /**
-    * @dev only the user who created a comment should be able to edit it. Also, a user should pay to edit their post
+    * @dev only the user who created a comment should be able to edit it.
      */
-    function editComment(uint256 _postId, uint256 _commentId, string memory _content) public payable onlyCommentOwner(_postId, _commentId) hasPaid {
+    function editComment(uint256 _postId, uint256 _commentId, string memory _content) public  onlyCommentOwner(_postId, _commentId)  {
         // get the comment from the Blockchain (call by reference) and update it
         s_postIdToComments[_postId][_commentId].content = _content;
         
