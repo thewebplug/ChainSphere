@@ -401,7 +401,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
     * @notice Since the postId is unique and can be mapped to author of the post, we only need the postId to uniquely reference any post in order to comment on it
     * Because in any social media platform there are so much more comments than posts, we allow the commentId not to be unique in general. However, comment ids are unique relative to any given post. Our thought is that this will prevent overflow
      */
-    function createComment(uint _postId, string memory _content) public checkUserExists(msg.sender) {
+    function createComment(uint _postId, string memory _content) public checkUserExists(msg.sender) postExists(_postId){
         //
         uint256 commentId = s_postIdToComments[_postId].length;
         
