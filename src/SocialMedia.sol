@@ -195,11 +195,13 @@ contract SocialMedia is VRFConsumerBaseV2 {
     }
     
     modifier onlyCommentOwner(uint256 _postId, uint256 _commentId) {
-        if(msg.sender != s_postAndCommentIdToAddress[_postId][_commentId]){
-            revert SocialMedia__NotCommentOwner();
-        }
-        _;
-    }
+    require(_postId < s_posts.length, "SocialMedia: Post does not exist");
+
+    require(_commentId < s_postIdToComments[_postId].length, "SocialMedia: Comment does not exist");
+
+    require(msg.sender == s_postAndCommentIdToAddress[_postId][_commentId], "SocialMedia: Not the owner of the comment");
+    _;
+}
     
     modifier usernameTaken(string memory _name) {
         if(s_usernameToAddress[_name] != address(0)){
