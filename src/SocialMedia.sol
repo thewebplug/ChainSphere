@@ -39,8 +39,6 @@ contract SocialMedia is VRFConsumerBaseV2 {
     /// Errors ///
     //////////////
     error SocialMedia__NotOwner();
-    error SocialMedia_postnotExists();
-    error SocialMedia_commentnotExists();
     error SocialMedia__NotPostOwner();
     error SocialMedia__NotCommentOwner();
     error SocialMedia__UsernameAlreadyTaken();
@@ -62,8 +60,8 @@ contract SocialMedia is VRFConsumerBaseV2 {
     struct User {
         uint256 id;
         address userAddress;
-        string name;
-        string Username;
+        string nickName; // must be unique
+        string fullNameOfUser;
         string bio;
         string profileImageHash;
     }
@@ -192,6 +190,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
     /////////////////
     /// Modifiers ///
     /////////////////
+
     modifier onlyOwner() {
         if (msg.sender != s_owner) {
             revert SocialMedia__NotOwner();
@@ -200,10 +199,6 @@ contract SocialMedia is VRFConsumerBaseV2 {
     }
 
     modifier onlyPostOwner(uint256 _postId) {
-        if (_postId >= s_posts.length) {
-            revert SocialMedia_postnotExists();
-        }
-
         if (msg.sender != s_postIdToAuthor[_postId]) {
             revert SocialMedia__NotPostOwner();
         }
@@ -211,12 +206,6 @@ contract SocialMedia is VRFConsumerBaseV2 {
     }
 
     modifier onlyCommentOwner(uint256 _postId, uint256 _commentId) {
-        if (_postId >= s_posts.length) {
-            revert SocialMedia_postnotExists();
-        }
-        if (_commentId >= s_postIdToComments[_postId].length) {
-            revert SocialMedia_commentnotExists();
-        }
         if (msg.sender != s_postAndCommentIdToAddress[_postId][_commentId]) {
             revert SocialMedia__NotCommentOwner();
         }
@@ -266,13 +255,6 @@ contract SocialMedia is VRFConsumerBaseV2 {
         _;
     }
 
-    modifier postExists(uint256 _postID) {
-        if (_postID >= s_posts.length) {
-            revert SocialMedia_postnotExists();
-        }
-        _;
-    }
-
     ///////////////////
     /// Constructor ///
     ///////////////////
@@ -308,7 +290,12 @@ contract SocialMedia is VRFConsumerBaseV2 {
 
     fallback() external payable {}
 
-    function registerUser(string memory _name, string memory _username)
+    /**
+    * @dev This function enables a user to be registered on ChainSphere
+    * @param _fullNameOfUser is the full name of the User
+    * @param _username is the user's nick name which must be unique. No two accounts are allowed to have the same nick name
+     */
+    function registerUser(string memory _fullNameOfUser, string memory _username)
         public
         usernameTaken(_username)
     {
@@ -318,10 +305,8 @@ contract SocialMedia is VRFConsumerBaseV2 {
 
         newUser.id = id;
         newUser.userAddress = msg.sender;
-        newUser.name = _name;
-        newUser.Username = _username;
-        newUser.bio = ""; //user will edit in editmy profile
-        newUser.profileImageHash = ""; //user will edit in editmyprofile
+        newUser.fullNameOfUser = _fullNameOfUser;
+        newUser.nickName = _username;
         s_addressToUserProfile[msg.sender] = newUser;
         s_userAddressToId[msg.sender] = id;
 
@@ -332,32 +317,57 @@ contract SocialMedia is VRFConsumerBaseV2 {
         emit UserRegistered(id, msg.sender, _username);
     }
 
-    function changeUsername(uint256 _userId, string memory _newName)
+    /**
+    * @dev this function allows a user to change thier nick name
+    * @param _userId is the id of the user which is a unique number
+    * @param _newNickName is the new nick name the user wishes to change to
+    * @notice the function checks if the caller is the owner of the profile and if _newNickName is not registered on the platform yet
+     */
+    function changeUsername(uint256 _userId, string memory _newNickName)
         public
         checkUserExists(msg.sender)
         onlyProfileOwner(_userId)
-        usernameTaken(_newName)
+        usernameTaken(_newNickName)
     {
         // get userId using the user address
         // uint256 currentUserId = _userId;
         // change user name using their id
-        s_users[_userId].Username = _newName;
-    }
-
-    function editMyProfile(
-        uint256 _userId,
-        string memory _bio,
-        string memory _profileImageHash,
-        string memory _name
-    ) public checkUserExists(msg.sender) onlyProfileOwner(_userId) {
-        User storage user = s_users[_userId];
-        user.bio = _bio;
-        user.profileImageHash = _profileImageHash;
-        user.name = _name;
+        s_users[_userId].nickName = _newNickName;
     }
 
     /**
-     * only a registered user can create posts on the platform
+    * @dev this function allows a user to edit their profile
+    * @param _userId is the id of the user which is a unique number
+    * @param _bio is a short self introduction about the user
+    * @param _profileImageHash is a hash of the profile image uploaded by the user
+    * @param _newName is the new full name of the user
+    * @notice the function checks if the caller is registered and is the owner of the profile 
+    * @notice it is not mandatory for all parameters to be supplied before calling the function. If any parameter is not supplied, that portion of the user profile is not updated
+     */
+    function editUserProfile(
+        uint256 _userId,
+        string memory _bio,
+        string memory _profileImageHash,
+        string memory _newName
+    ) public checkUserExists(msg.sender) onlyProfileOwner(_userId) {
+
+        if(keccak256(abi.encode(_bio)) != keccak256(abi.encode(""))){
+            s_users[_userId].bio = _bio; // bio is only updated if supplied by user
+        }
+
+        if(keccak256(abi.encode(_profileImageHash)) != keccak256(abi.encode(""))){
+            s_users[_userId].profileImageHash = _profileImageHash; // profileImageHash is only updated if supplied by user
+        }
+        
+        if(keccak256(abi.encode(_profileImageHash)) != keccak256(abi.encode(""))){
+            s_users[_userId].fullNameOfUser = _newName; // fullNameOfUser is only updated if supplied by user
+        }
+    }
+
+    /**
+     * @dev This function allows only a registered user to create posts on the platform
+     * @param _content is the content of the post by user
+     * @param _imgHash is the hash of the image uploaded by the user
      */
     function createPost(string memory _content, string memory _imgHash)
         public
@@ -388,8 +398,11 @@ contract SocialMedia is VRFConsumerBaseV2 {
     }
 
     /**
-     * @dev A user should pay to edit post. The rationale is, to ensure users go through their content before posting since editing of content is not free
-     * @notice To effect the payment functionality, we include a receive function to enable the smart contract receive ether. Also, we use Chainlink pricefeed to ensure ether is amount has the required usd equivalent
+     * @dev This function allows only the owner of a post to edit their post
+     * @param _postId is the id of the post to be edited
+     * @param _content is the content of the post by user
+     * @param _imgHash is the hash of the image uploaded by the user. This is optional
+     * 
      */
     function editPost(
         uint256 _postId,
@@ -397,11 +410,18 @@ contract SocialMedia is VRFConsumerBaseV2 {
         string memory _imgHash
     ) public onlyPostOwner(_postId) {
         s_posts[_postId].content = _content;
-        s_posts[_postId].imgHash = _imgHash;
+        if(keccak256(abi.encode(_imgHash)) != keccak256(abi.encode(""))){
+            s_posts[_postId].imgHash = _imgHash; // this is only triggered if the picture of the post is changed
+        }
         string memory nameOfUser = getUserNameFromAddress(msg.sender);
         emit PostEdited(_postId, nameOfUser);
     }
 
+    /**
+     * @dev A user should pay to delete post. The rationale is, to ensure users go through their content before posting since deleting of content is not free
+     * @param _postId is the id of the post to be deleted
+     * @notice The function checks if the user has paid the required fee for deleting post before proceeding with the action. To effect the payment functionality, we include a receive function to enable the smart contract receive ether. Also, we use Chainlink pricefeed to ensure ether is amount has the required usd equivalent
+     */
     function deletePost(uint256 _postId)
         public
         payable
@@ -413,6 +433,12 @@ contract SocialMedia is VRFConsumerBaseV2 {
         s_posts[_postId].author = address(0);
     }
 
+    /**
+    * @dev This function allows a registered user to give an upvote to a post
+    * @param _postId is the id of the post for which user wishes to give an upvote
+    * @notice no user should be able to vote for their post. No user should vote for the same post more than once
+    * @notice the function increments the number of upvotes for the post by 1, sets the callers voting status for the post as true and emits event that post has received an upvote from the user
+     */
     function upvote(uint256 _postId)
         public
         notOwner(_postId)
@@ -428,6 +454,12 @@ contract SocialMedia is VRFConsumerBaseV2 {
         emit Upvoted(_postId, postAuthorName, upvoter);
     }
 
+    /**
+    * @dev This function allows a registered user to give a downvote to a post
+    * @param _postId is the id of the post for which user wishes to give a downvote
+    * @notice no user should be able to vote for their post. No user should vote for the same post more than once
+    * @notice the function increments the number of downvotes for the post by 1, sets the callers voting status for the post as true and emits event that post has received a downvote from the user
+     */
     function downvote(uint256 _postId)
         public
         notOwner(_postId)
@@ -451,9 +483,8 @@ contract SocialMedia is VRFConsumerBaseV2 {
     function createComment(uint256 _postId, string memory _content)
         public
         checkUserExists(msg.sender)
-        postExists(_postId)
     {
-        //
+        
         uint256 commentId = s_postIdToComments[_postId].length;
 
         Comment memory newComment = Comment({
@@ -464,8 +495,8 @@ contract SocialMedia is VRFConsumerBaseV2 {
             timestamp: block.timestamp,
             likesCount: 0
         });
-        // s_comments[commentId] = Comment(commentId, msg.sender, _postId, _content, block.timestamp, 0);
-        string memory postAuthor = getUserById(_postId).Username;
+        
+        string memory postAuthor = getUserById(_postId).nickName;
         string memory commenter = getUserNameFromAddress(msg.sender);
 
         s_postAndCommentIdToAddress[_postId][commentId] = msg.sender;
@@ -475,7 +506,10 @@ contract SocialMedia is VRFConsumerBaseV2 {
     }
 
     /**
-     * @dev only the user who created a comment should be able to edit it.
+     * @dev This function allows only the user who created a comment to edit it.
+     * @param _postId is the id of the post which was commented
+     * @param _commentId is the id of the comment of interest
+     * @param _content is the new content of the comment
      */
     function editComment(
         uint256 _postId,
@@ -487,7 +521,10 @@ contract SocialMedia is VRFConsumerBaseV2 {
     }
 
     /**
-     * @dev only the user who created a comment should be able to delete it. Also, a user should pay to delete their post
+     * @dev This function allows only the user who created a comment to delete it. 
+     * @param _postId is the id of the post which was commented
+     * @param _commentId is the id of the comment of interest
+     * @notice the function checks if the caller is the owner of the comment and has paid the fee for deleting comment
      */
     function deleteComment(uint256 _postId, uint256 _commentId)
         public
@@ -500,16 +537,25 @@ contract SocialMedia is VRFConsumerBaseV2 {
         s_postIdToComments[_postId][_commentId].author = address(0); // delete address of comment author
     }
 
+    /**
+    * @dev this function allows a registered user to like any comment
+    * @param _postId is the id of the post commented
+    * @param _commentId is the id of the comment in question
+    * @notice the function increments the number of likes on the comment by 1 and adds user to an array of likers
+     */
     function likeComment(uint256 _postId, uint256 _commentId)
         public
         checkUserExists(msg.sender)
     {
-        // retrieve the comment from the Blockchain in increment number of likes
-        s_postIdToComments[_postId][_commentId].likesCount++;
-        // There is need to note the users that like a comment
-        s_likedComment[_postId][_commentId][msg.sender] = true;
-        // Add liker to an array of users that liked the comment
-        s_likersOfComment[_postId][_commentId].push(msg.sender);
+        if(s_likedComment[_postId][_commentId][msg.sender] == false){
+            // There is need to note the users that like a comment
+            s_likedComment[_postId][_commentId][msg.sender] = true;
+            // retrieve the comment from the Blockchain in increment number of likes
+            s_postIdToComments[_postId][_commentId].likesCount++;
+            // Add liker to an array of users that liked the comment
+            s_likersOfComment[_postId][_commentId].push(msg.sender);
+        }
+        
     }
 
     ///////////////////////
@@ -693,6 +739,9 @@ contract SocialMedia is VRFConsumerBaseV2 {
     // Getter Functions //
     //////////////////////
 
+    /**
+    * @dev function receives quantity of ether and gives its value in USD
+     */
     function getUsdValueOfEthAmount(uint256 _ethAmount)
         public
         view
@@ -702,7 +751,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
         return usdValue;
     }
 
-    function getRecentWinners() public view returns (uint256[] memory) {
+    function getIdsOfRecentWinningPosts() public view returns (uint256[] memory) {
         return s_idsOfRecentWinningPosts;
     }
 
@@ -714,10 +763,20 @@ contract SocialMedia is VRFConsumerBaseV2 {
         return s_idsOfEligiblePosts;
     }
 
+    /**
+    * @dev function retrieves user profile given the userAddress
+    * @param _userAddress is the wallet address of user
+    * @return function returns the profile of the user
+     */
     function getUser(address _userAddress) public view returns (User memory) {
         return s_addressToUserProfile[_userAddress];
     }
 
+    /**
+    * @dev function retrieves all posts by a user given the userAddress
+    * @param _userAddress is the wallet address of user
+    * @return function returns an arry of all posts by the user
+     */
     function getUserPosts(address _userAddress)
         public
         view
@@ -727,14 +786,30 @@ contract SocialMedia is VRFConsumerBaseV2 {
         return userPosts[_userAddress];
     }
 
+    /**
+    * @dev function retrieves user profile given the userId
+    * @param _userId is the id of user. userId is unique
+    * @return function returns the profile of the user
+     */
     function getUserById(uint256 _userId) public view returns (User memory) {
         return s_users[_userId];
     }
 
+    /**
+    * @dev function retrieves all information on a post given the postId
+    * @param _postId is the id of the post. The postId is unique
+    * @return function returns the post corresponding to that postId
+     */
     function getPostById(uint256 _postId) public view returns (Post memory) {
         return s_posts[_postId];
     }
 
+    /**
+    * @dev function retrieves all information about a comment on a post given the postId and the commentId
+    * @param _postId is the id of the post. The postId is unique
+    * @param _commentId is the id of the comment. 
+    * @return function returns the comment corresponding to that postId and commentId
+     */
     function getCommentByPostIdAndCommentId(uint256 _postId, uint256 _commentId)
         public
         view
@@ -743,6 +818,12 @@ contract SocialMedia is VRFConsumerBaseV2 {
         return s_postIdToComments[_postId][_commentId];
     }
 
+    /**
+    * @dev function retrieves all users that liked a comment on a post given the postId and the commentId
+    * @param _postId is the id of the post. The postId is unique
+    * @param _commentId is the id of the comment. 
+    * @return function returns an array of userAddresses that liked the  comment
+     */
     function getCommentLikersByPostIdAndCommentId(
         uint256 _postId,
         uint256 _commentId
@@ -750,6 +831,11 @@ contract SocialMedia is VRFConsumerBaseV2 {
         return s_likersOfComment[_postId][_commentId];
     }
 
+    /**
+    * @dev function retrieves all comments by a user given the userAddress
+    * @param _userAddress is the wallet address of user
+    * @return function returns an arry of all comments by the user
+     */
     function getUserComments(address _userAddress)
         public
         view
@@ -759,13 +845,25 @@ contract SocialMedia is VRFConsumerBaseV2 {
         return userComments[_userAddress];
     }
 
+    /**
+    * @dev function retrieves username(i.e. nickname) of user given the userAddress
+    * @param _userAddress is the wallet address of user
+    * @notice function returns username(i.e. nickname) of the user
+     */
     function getUserNameFromAddress(address _userAddress)
         public
         view
-        returns (string memory nameOfUser)
+        returns (string memory nickNameOfUser)
     {
-        User memory user = s_addressToUserProfile[_userAddress];
-        nameOfUser = user.Username;
+        // User memory user = s_addressToUserProfile[_userAddress];
+        nickNameOfUser = s_addressToUserProfile[_userAddress].nickName;
+    }
+
+    /**
+    * @dev This function retrieves all post on the blockchain
+     */
+    function getAllPosts() public view returns (Post[] memory) {
+        return s_posts;
     }
 
     // Owner functions
@@ -785,7 +883,5 @@ contract SocialMedia is VRFConsumerBaseV2 {
         s_owner = _newOwner;
     }
 
-    function getAllPosts() public view returns (Post[] memory) {
-        return s_posts;
-    }
+
 }

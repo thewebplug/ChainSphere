@@ -67,6 +67,12 @@ contract FundSubscription is Script{
                 subId, FUND_AMOUNT
             );
             vm.stopBroadcast();
+        } else if(block.chainid == 2442){
+            vm.startBroadcast(deployerKey);
+            VRFCoordinatorV2Mock(vrfCoordinator).fundSubscription(
+                subId, FUND_AMOUNT
+            );
+            vm.stopBroadcast();
         } else{
             vm.startBroadcast(deployerKey);
             LinkToken(link).transferAndCall(
