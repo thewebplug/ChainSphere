@@ -104,11 +104,12 @@ contract SocialMediaTest is Test {
     // This Modifier is created since this task will be repeated a couple of times
     modifier registerOneUser() {
         string memory myName = "Nengak Goltong";
+        string memory myNickName = "Spo";
         string memory myBio = "I love to code";
         string memory myImgHash = "";
         
         vm.prank(USER);
-        socialMedia.registerUser(myName, myBio, myImgHash);
+        socialMedia.registerUser(myName, myNickName);
         _;
     }
 
@@ -127,7 +128,7 @@ contract SocialMediaTest is Test {
         string memory expectedBio;
         
         // get name of user from the Blockchain
-        expectedName = socialMedia.getUserById(0).name;
+        expectedName = socialMedia.getUserById(0).nickName;
         console.log("Registered User Name: %s", expectedName);
 
         expectedBio = socialMedia.getUserById(0).bio;
@@ -145,6 +146,7 @@ contract SocialMediaTest is Test {
     // Test reverts as expected. Test passes
     function testUserCantRegisterIfUsernameAlreadyExists() public registerOneUser{
         string memory myName = "Nengak Goltong";
+        string memory myNickName = "Spo";
         string memory myBio = "I love to code in Solidity";
         string memory myImgHash = "";
         
@@ -153,18 +155,19 @@ contract SocialMediaTest is Test {
             SocialMedia.SocialMedia__UsernameAlreadyTaken.selector
         );
         vm.prank(USER);
-        socialMedia.registerUser(myName, myBio, myImgHash);
+        socialMedia.registerUser(myName, myNickName);
     }
 
     function testEmitsEventAfterUserRegistration() public {
         string memory myName = "Nengak Goltong";
+        string memory myNickName = "Spo";
         string memory myBio = "I love to code in Solidity";
         string memory myImgHash = "";
         
         vm.expectEmit(true, false, false, false, address(socialMedia));
         emit UserRegistered(0, USER, myName);
         vm.prank(USER);
-        socialMedia.registerUser(myName, myBio, myImgHash);
+        socialMedia.registerUser(myName, myNickName);
     }
 
     //////////////////////////////
@@ -182,7 +185,7 @@ contract SocialMediaTest is Test {
         for(i = 0; i <len; ){
             address newUser = makeAddr(string(names[i])); 
             vm.prank(newUser);
-            socialMedia.registerUser(names[i], myBio, myImgHash);
+            socialMedia.registerUser(names[i], names[i]);
             unchecked {
                 i++;
             }
@@ -245,7 +248,7 @@ contract SocialMediaTest is Test {
         socialMedia.changeUsername(USER_ZERO, newName);
 
         // get name of user from the Blockchain
-        expectedName = socialMedia.getUserById(USER_ZERO).name;
+        expectedName = socialMedia.getUserById(USER_ZERO).nickName;
         console.log("User Name: %s", expectedName);
 
         assertEq(
@@ -322,7 +325,7 @@ contract SocialMediaTest is Test {
             vm.deal(newUser, STARTING_BALANCE);
             vm.startPrank(newUser);
             // register newUser
-            socialMedia.registerUser(names[i], myBio, myImgHash);
+            socialMedia.registerUser(names[i], names[i]);
             // newUser makes a post
             socialMedia.createPost(myContent, myImgHash);
             vm.stopPrank();
@@ -351,24 +354,24 @@ contract SocialMediaTest is Test {
     }
 
     // Test passes
-    function testOwnerCantEditPostWithoutPaying() public registerThreeUsersAndPost {
-        // Test is expected to revert because a user will try editing their post without making payment
+    // function testOwnerCantEditPostWithoutPaying() public registerThreeUsersAndPost {
+    //     // Test is expected to revert because a user will try editing their post without making payment
 
-        // Get the address of the author of the first post 
-        address firstUser = socialMedia.getPostById(0).author;
-        string memory newContent = "Immaculate Heart of Mary";
-        string memory imgHash = "";
+    //     // Get the address of the author of the first post 
+    //     address firstUser = socialMedia.getPostById(0).author;
+    //     string memory newContent = "Immaculate Heart of Mary";
+    //     string memory imgHash = "";
 
-        vm.expectRevert(
-            SocialMedia.SocialMedia__PaymentNotEnough.selector
-        );
-        vm.prank(firstUser);
-        socialMedia.editPost(0, newContent, imgHash);
+    //     vm.expectRevert(
+    //         SocialMedia.SocialMedia__PaymentNotEnough.selector
+    //     );
+    //     vm.prank(firstUser);
+    //     socialMedia.editPost(0, newContent, imgHash);
 
-    }
+    // }
 
     // Test passes
-    function testOwnerCanEditPostAfterPaying() public registerThreeUsersAndPost {
+    function testOwnerCanEditPost() public registerThreeUsersAndPost {
         // Test is expected to pass because a user will pay for editing their post
 
         // Get the address of the author of the first post 
@@ -377,7 +380,7 @@ contract SocialMediaTest is Test {
         string memory imgHash = "";
 
         vm.prank(firstUser);
-        socialMedia.editPost{value: EDITING_FEE}(0, newContent, imgHash);
+        socialMedia.editPost(0, newContent, imgHash);
         
         string memory retrievedContent = socialMedia.getPostById(0).content;
         assertEq(
@@ -398,7 +401,7 @@ contract SocialMediaTest is Test {
         vm.expectEmit(true, false, false, false, address(socialMedia));
         emit PostEdited(0, myName);
         vm.prank(firstUser);
-        socialMedia.editPost{value: EDITING_FEE}(0, newContent, imgHash);
+        socialMedia.editPost(0, newContent, imgHash);
         
     }
 
@@ -409,7 +412,7 @@ contract SocialMediaTest is Test {
         string memory imgHash = "";
 
         vm.prank(firstUser);
-        socialMedia.editPost{value: EDITING_FEE}(0, newContent, imgHash);
+        socialMedia.editPost(0, newContent, imgHash);
         address owner = socialMedia.getContractOwner();
         vm.prank(owner);
         uint256 contractBalance = socialMedia.getBalance();
@@ -734,26 +737,26 @@ contract SocialMediaTest is Test {
     }
 
     // Test passes
-    function testOwnerCantEditCommentWithoutPaying() public registerThreeUsersAndPost {
-        // Test is expected to revert because a user will try editing their comment without making payment
+    // function testOwnerCantEditCommentWithoutPaying() public registerThreeUsersAndPost {
+    //     // Test is expected to revert because a user will try editing their comment without making payment
 
-        // Get the address of the author of the first post 
-        address firstUser = socialMedia.getPostById(0).author;
-        string memory content = "Praise God";
-        string memory newContent = "For He is good";
+    //     // Get the address of the author of the first post 
+    //     address firstUser = socialMedia.getPostById(0).author;
+    //     string memory content = "Praise God";
+    //     string memory newContent = "For He is good";
 
-        vm.prank(firstUser);
-        socialMedia.createComment(0, content); // user 0 comments on their post 
+    //     vm.prank(firstUser);
+    //     socialMedia.createComment(0, content); // user 0 comments on their post 
 
-        vm.expectRevert(
-            SocialMedia.SocialMedia__PaymentNotEnough.selector
-        );
-        vm.prank(firstUser);
-        socialMedia.editComment(0, 0, newContent);
-    }
+    //     vm.expectRevert(
+    //         SocialMedia.SocialMedia__PaymentNotEnough.selector
+    //     );
+    //     vm.prank(firstUser);
+    //     socialMedia.editComment(0, 0, newContent);
+    // }
 
     // Test passes
-    function testOwnerCanEditCommentAfterPaying() public registerThreeUsersAndPost {
+    function testOwnerCanEditComment() public registerThreeUsersAndPost {
         // Test is expected to pass because a user will pay for editing their post
 
         // Get the address of the author of the first post 
@@ -763,7 +766,8 @@ contract SocialMediaTest is Test {
 
         vm.startPrank(firstUser);
         socialMedia.createComment(0, content); // user 0 comments on their post 
-        socialMedia.editComment{value: EDITING_FEE}(0, 0, newContent);
+        // socialMedia.editComment{value: EDITING_FEE}(0, 0, newContent);
+        socialMedia.editComment(0, 0, newContent);
         vm.stopPrank();
 
         string memory retrievedComment = socialMedia.getCommentByPostIdAndCommentId(0,0).content;
@@ -903,7 +907,11 @@ contract SocialMediaTest is Test {
     }
 
     modifier registerTenUsersWhoPostAndCastVotes() {
-        string[10] memory names = [
+        string[10] memory fullNames = [
+            "Maritji", "Songrit", "Jane", "Tanaan", "John",
+            "Spytex", "Afan", "Nenpan", "Smith", "Rose"
+        ];
+        string[10] memory nickNames = [
             "Maritji", "Songrit", "Jane", "Tanaan", "John",
             "Spytex", "Afan", "Nenpan", "Smith", "Rose"
         ];
@@ -912,7 +920,7 @@ contract SocialMediaTest is Test {
         string memory myContent = "Come and See";
         string memory newContent = "Praise God";
         
-        uint256 len = names.length;
+        uint256 len = fullNames.length;
         uint256 i;
         uint256 j;
         
@@ -920,11 +928,11 @@ contract SocialMediaTest is Test {
         for(i = 0; i <len; ){
             // Create a fake user and assign them a starting balance
             
-            address newUser = makeAddr(string(names[i])); 
+            address newUser = makeAddr(string(fullNames[i])); 
             vm.deal(newUser, STARTING_BALANCE);
             vm.startPrank(newUser);
             // register newUser
-            socialMedia.registerUser(names[i], myBio, myImgHash);
+            socialMedia.registerUser(fullNames[i], nickNames[i]);
             // newUser makes a post
             socialMedia.createPost(myContent, myImgHash);
             vm.stopPrank();
@@ -940,7 +948,7 @@ contract SocialMediaTest is Test {
         for(i = 0; i <len; ){
             address currentUser = userAddresses[i];
             vm.startPrank(currentUser);
-            socialMedia.editPost{value: EDITING_FEE}(i, newContent, myImgHash); // edit post
+            socialMedia.editPost(i, newContent, myImgHash); // edit post
             vm.stopPrank();
 
             for(j = ++i; j < len; ){
@@ -1057,11 +1065,11 @@ contract SocialMediaTest is Test {
         // assert(socialMedia.getLengthOfPlayers() == 0);
         // assert(previousTimeStamp < socialMedia.getLastTimeStamp());
         address winnerAddress = socialMedia.getPostById(
-            socialMedia.getRecentWinners()[0]
+            socialMedia.getIdsOfRecentWinningPosts()[0]
         ).author;
         console.log(winnerAddress.balance);
         console.log(STARTING_BALANCE + WINNING_REWARD - EDITING_FEE);
-        assert(socialMedia.getRecentWinners().length == 1); // Only one winner was picked
+        assert(socialMedia.getIdsOfRecentWinningPosts().length == 1); // Only one winner was picked
         assert(winnerAddress.balance > STARTING_BALANCE);
     }
 
