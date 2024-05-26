@@ -358,7 +358,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
     * @dev A user should pay to edit post. The rationale is, to ensure users go through their content before posting since editing of content is not free
     * @notice To effect the payment functionality, we include a receive function to enable the smart contract receive ether. Also, we use Chainlink pricefeed to ensure ether is amount has the required usd equivalent
      */
-    function editPost(uint _postId, string memory _content, string memory _imgHash) public payable onlyPostOwner(_postId) {
+    function editPost(uint _postId, string memory _content, string memory _imgHash) public  onlyPostOwner(_postId) {
         
         s_posts[_postId].content = _content;
         s_posts[_postId].imgHash = _imgHash;
