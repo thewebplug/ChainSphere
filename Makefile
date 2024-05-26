@@ -15,7 +15,7 @@ fund-subscription:
 	@forge script script/Interactions.s.sol:FundSubscription --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast -vvvv
 
 deploy-sepolia:
-	@forge script script/DeploySocialMedia.s.sol:DeploySocialMedia --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvv
+	@forge script script/DeployChainSphere.s.sol:DeployChainSphere --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvv
 
 deploy-polygon_zkevm:
 	@forge script script/DeploySocialMedia.s.sol:DeploySocialMedia --rpc-url $(POLYGON_zkEVM_TESTNET_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(POLYGON_zkEVM_API_KEY) -vvvvv
@@ -33,12 +33,9 @@ ifeq ($(findstring --network sepolia,$(ARGS)),--network sepolia)
 	NETWORK_ARGS := --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvv
 endif
 
-ifeq ($(findstring --network polygon_zkevm,$(ARGS)),--network polygon_zkevm)
-	NETWORK_ARGS := --rpc-url $(POLYGON_zkEVM_TESTNET_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(POLYGON_zkEVM_API_KEY) -vvvv
-endif
 
 deploy:
-	@forge script script/DeploySocialMedia.s.sol:DeploySocialMedia $(NETWORK_ARGS)
+	@forge script script/DeployChainSphere.s.sol:DeployChainSphere $(NETWORK_ARGS)
 
 createSubscription:
 	@forge script script/Interactions.s.sol:CreateSubscription $(NETWORK_ARGS)

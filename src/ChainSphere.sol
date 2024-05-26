@@ -30,219 +30,68 @@ import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interface
 import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 import {PriceConverter} from "./PriceConverter.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import { ChainSphereVars as CSVars}  from "./ChainSphereVars.sol";
 
-contract SocialMedia is VRFConsumerBaseV2 {
+contract ChainSphere is VRFConsumerBaseV2, CSVars {
     using PriceConverter for uint256;
     // VRFv2Consumer public vrfConsumer;
-
-    //////////////
-    /// Errors ///
-    //////////////
-    error SocialMedia__NotOwner();
-    error SocialMedia__NotPostOwner();
-    error SocialMedia__NotCommentOwner();
-    error SocialMedia__UsernameAlreadyTaken();
-    error SocialMedia__UserDoesNotExist();
-    error SocialMedia__OwnerCannotVote();
-    error SocialMedia__AlreadyVoted();
-    error SocialMedia__PaymentNotEnough();
-    error SocialMedia__UpkeepNotNeeded(
-        uint256 balance,
-        uint256 numOfEligibleAuthors
-    );
-    error SocialMedia__TransferFailed();
-    error SocialMedia__BatchTransferFailed(address winner);
-    error SocialMedia__NotProfileOwner();
-
-    ///////////////////////////////////
-    /// Type Declarations (Structs) ///
-    ///////////////////////////////////
-    struct User {
-        uint256 id;
-        address userAddress;
-        string nickName; // must be unique
-        string fullNameOfUser;
-        string bio;
-        string profileImageHash;
-    }
-
-    struct Post {
-        uint256 postId;
-        string content;
-        string imgHash;
-        uint256 timestamp;
-        uint256 upvotes;
-        uint256 downvotes;
-        address author;
-    }
-
-    struct Comment {
-        uint256 commentId;
-        address author;
-        uint256 postId;
-        string content;
-        uint256 timestamp;
-        uint256 likesCount;
-    }
-
-    ///////////////////////
-    /// State Variables ///
-    ///////////////////////
-
-    /* For gas efficiency, we declare variables as private and define getter functions for them where necessary */
-
-    // Imported Variables
-    AggregatorV3Interface private s_priceFeed;
-
-    // Constants
-    uint256 private constant MINIMUM_USD = 5e18;
-    uint256 private constant MIN_POST_SCORE = 5;
-    uint256 private constant WINNING_REWARD = 0.01 ether;
-
-    // VRF2 Constants
-    uint16 private constant REQUEST_CONFIRMATIONS = 3;
-    uint32 private constant TEN = 10; // Maximum percentage of winners to be picked out of an array of eligible authors
-    uint32 private constant TWENTY = 20; // Number of eligible authors beyond which a maximum of 10% will be picked for award
-
-    // VRF2 Immutables
-    // @dev duration of the lottery in seconds
-    uint256 private immutable i_interval; // Period that must pass before a set of posts can be adjudged eligible for reward based on their postScore
-    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
-    bytes32 private immutable i_gasLane;
-    uint64 private immutable i_subscriptionId;
-    uint32 private immutable i_callbackGasLimit;
-
-    uint256 private s_lastTimeStamp;
-    // Mappings
-
-    /** Variables Relating to User */
-    User[] s_users; // array of users
-    mapping(address => User) private s_addressToUserProfile;
-    uint256 userId;
-    mapping(address => uint256) private s_userAddressToId; // gets userId using address of user
-
-    /** Variables Relating to Post */
-    Post[] s_posts; // array of all posts
-    uint256[] s_idsOfRecentPosts; // array of posts that are not more than VALIDITY_PERIOD old. This array is reset anytime authors have been picked for reward.
-    Post[] s_postsEligibleForReward; // an array of eligible posts for display in the trending section on the frontend
-    mapping(uint256 => Post) private s_idToPost; // get full details of a post using the postId
-
-    mapping(address => uint256) private s_authorToPostId; // Get postId using address of the author
-    mapping(uint256 => address) private s_postIdToAuthor; // Get the address of the author of a post using the postId
-
-    mapping(string => address) private s_usernameToAddress; // get user address using their name
-    mapping(address => mapping(uint256 => bool)) private s_hasVoted; //Checks if a user has voted for a post or not
-    mapping(address => Post[]) private userPosts; // gets all posts by a user using the user address
-
-    /** Variables Relating to Comment */
-
-    mapping(uint256 => Comment[]) private s_postIdToComments; // gets array of comments on a post using the postId
-    mapping(uint256 => mapping(uint256 => address))
-        private s_postAndCommentIdToAddress; // gets comment author using the postId and commentId
-
-    mapping(address => Comment[]) private userComments; // gets an array of comments by a user using user address
-    mapping(uint256 => mapping(uint256 => mapping(address => bool)))
-        private s_likedComment; // indicates whether a comment is liked by a user using postId and commentId and userAddress
-    mapping(uint256 => mapping(uint256 => address[])) private s_likersOfComment; // gets an array of likers of a comment using the postId and commentId
-
-    /** Other Variables */
-
-    address private s_owner; // would have made this variable immutable but for the changes_Owner function in the contract
-    address[] private s_authorsEligibleForReward; // An array of users eligible for rewards. Addresses are marked payable so that winner can be paid
-
-    uint256[] private s_idsOfEligiblePosts; // array that holds postId of eligible posts for reward
-    uint256[] private s_idsOfRecentWinningPosts; // array that holds postId of the monst recent winning posts
-    uint32 private s_numOfWords; // number of random words to request from the Chainlink Oracle
-
-    //////////////
-    /// Events ///
-    //////////////
-
-    event UserRegistered(
-        uint256 indexed id,
-        address indexed userAddress,
-        string indexed username
-    );
-    event PostCreated(uint256 postId, string authorName);
-    event PostEdited(uint256 postId, string authorName);
-    event CommentCreated(
-        uint256 indexed commentId,
-        string postAuthor,
-        string commentAuthor,
-        uint256 postId
-    );
-    event PostLiked(
-        uint256 indexed postId,
-        address indexed postAuthor,
-        address indexed liker
-    );
-    event Upvoted(uint256 postId, string posthAuthorName, string upvoterName);
-    event Downvoted(
-        uint256 postId,
-        string posthAuthorName,
-        string downvoterName
-    );
-    // Event for rewarding users
-    event RewardSent(address indexed user, uint256 amount);
-    event RequestWinningAuthor(uint256 requestId);
-    event PickedWinner(address winner);
 
     /////////////////
     /// Modifiers ///
     /////////////////
 
     modifier onlyOwner() {
-        if (msg.sender != s_owner) {
-            revert SocialMedia__NotOwner();
+        if (msg.sender != getContractOwner()) {
+            revert ChainSphere__NotOwner();
         }
         _;
     }
 
     modifier onlyPostOwner(uint256 _postId) {
-        if (msg.sender != s_postIdToAuthor[_postId]) {
-            revert SocialMedia__NotPostOwner();
+        if (msg.sender != getPostById(_postId).author) {
+            revert ChainSphere__NotPostOwner();
         }
         _;
     }
 
     modifier onlyCommentOwner(uint256 _postId, uint256 _commentId) {
-        if (msg.sender != s_postAndCommentIdToAddress[_postId][_commentId]) {
-            revert SocialMedia__NotCommentOwner();
+        if (msg.sender != getCommentByPostIdAndCommentId(_postId, _commentId).author) {
+            revert ChainSphere__NotCommentOwner();
         }
         _;
     }
 
     modifier usernameTaken(string memory _username) {
-        if (s_usernameToAddress[_username] != address(0)) {
-            revert SocialMedia__UsernameAlreadyTaken();
+        if (getAddressFromUsername(_username) != address(0)) {
+            revert ChainSphere__UsernameAlreadyTaken();
         }
         _;
     }
 
     modifier checkUserExists(address _userAddress) {
-        if (s_addressToUserProfile[_userAddress].userAddress == address(0)) {
-            revert SocialMedia__UserDoesNotExist();
+        if (getUser(_userAddress).userAddress == address(0)) {
+            revert ChainSphere__UserDoesNotExist();
         }
         _;
     }
 
     modifier notOwner(uint256 _postId) {
-        if (msg.sender == s_postIdToAuthor[_postId]) {
-            revert SocialMedia__OwnerCannotVote();
+        if (msg.sender == getPostById(_postId).author) {
+            revert ChainSphere__OwnerCannotVote();
         }
         _;
     }
 
     modifier hasNotVoted(uint256 _postId) {
-        if (s_hasVoted[msg.sender][_postId]) {
-            revert SocialMedia__AlreadyVoted();
+        if (getUserVoteStatus(_postId)) {
+            revert ChainSphere__AlreadyVoted();
         }
         _;
     }
 
     modifier hasPaid() {
         if (msg.value.getConversionRate(s_priceFeed) < MINIMUM_USD) {
-            revert SocialMedia__PaymentNotEnough();
+            revert ChainSphere__PaymentNotEnough();
         }
         _;
     }
@@ -250,7 +99,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
     modifier onlyProfileOwner(uint256 _userId) {
         // check if msg.sender is the profile owner
         if (msg.sender != getUserById(_userId).userAddress) {
-            revert SocialMedia__NotProfileOwner();
+            revert ChainSphere__NotProfileOwner();
         }
         _;
     }
@@ -268,14 +117,14 @@ contract SocialMedia is VRFConsumerBaseV2 {
         address link,
         uint256 deployerKey
     ) VRFConsumerBaseV2(vrfCoordinator) {
-        s_owner = msg.sender;
-        s_priceFeed = AggregatorV3Interface(priceFeed);
-        i_interval = interval;
-        s_lastTimeStamp = block.timestamp;
-        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinator);
-        i_gasLane = gasLane;
-        i_subscriptionId = subscriptionId;
-        i_callbackGasLimit = callbackGasLimit;
+        CSVars.s_owner = msg.sender;
+        CSVars.s_priceFeed = AggregatorV3Interface(priceFeed);
+        CSVars.i_interval = interval;
+        CSVars.s_lastTimeStamp = block.timestamp;
+        CSVars.i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinator);
+        CSVars.i_gasLane = gasLane;
+        CSVars.i_subscriptionId = subscriptionId;
+        CSVars.i_callbackGasLimit = callbackGasLimit;
     }
 
     /////////////////
@@ -307,10 +156,10 @@ contract SocialMedia is VRFConsumerBaseV2 {
         newUser.userAddress = msg.sender;
         newUser.fullNameOfUser = _fullNameOfUser;
         newUser.nickName = _username;
-        s_addressToUserProfile[msg.sender] = newUser;
-        s_userAddressToId[msg.sender] = id;
+        CSVars.s_addressToUserProfile[msg.sender] = newUser;
+        CSVars.s_userAddressToId[msg.sender] = id;
 
-        s_usernameToAddress[_username] = msg.sender;
+        CSVars.s_usernameToAddress[_username] = msg.sender;
 
         // Add user to list of users
         s_users.push(newUser);
@@ -374,7 +223,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
         checkUserExists(msg.sender)
     {
         // generate id's for posts in a serial manner
-        uint256 postId = s_posts.length;
+        uint256 postId = CSVars.s_posts.length;
 
         // Initialize an instance of a post for the user
         Post memory newPost = Post({
@@ -389,11 +238,11 @@ contract SocialMedia is VRFConsumerBaseV2 {
 
         string memory nameOfUser = getUserNameFromAddress(msg.sender);
 
-        userPosts[msg.sender].push(newPost); // Add the post to userPosts
-        s_posts.push(newPost); // Add the post to the array of posts
-        s_idsOfRecentPosts.push(newPost.postId); // Add the postId to the array of ids of recent posts for possible nomination for reward
-        s_authorToPostId[msg.sender] = postId; // map post to the author
-        s_postIdToAuthor[postId] = msg.sender;
+        CSVars.userPosts[msg.sender].push(newPost); // Add the post to CSVars.userPosts
+        CSVars.s_posts.push(newPost); // Add the post to the array of posts
+        CSVars.s_idsOfRecentPosts.push(newPost.postId); // Add the postId to the array of ids of recent posts for possible nomination for reward
+        CSVars.s_authorToPostId[msg.sender] = postId; // map post to the author
+        CSVars.s_postIdToAuthor[postId] = msg.sender;
         emit PostCreated(postId, nameOfUser);
     }
 
@@ -409,9 +258,9 @@ contract SocialMedia is VRFConsumerBaseV2 {
         string memory _content,
         string memory _imgHash
     ) public onlyPostOwner(_postId) {
-        s_posts[_postId].content = _content;
+        CSVars.s_posts[_postId].content = _content;
         if(keccak256(abi.encode(_imgHash)) != keccak256(abi.encode(""))){
-            s_posts[_postId].imgHash = _imgHash; // this is only triggered if the picture of the post is changed
+            CSVars.s_posts[_postId].imgHash = _imgHash; // this is only triggered if the picture of the post is changed
         }
         string memory nameOfUser = getUserNameFromAddress(msg.sender);
         emit PostEdited(_postId, nameOfUser);
@@ -429,8 +278,8 @@ contract SocialMedia is VRFConsumerBaseV2 {
         hasPaid
     {
         // delete the content of post by
-        s_posts[_postId].content = "";
-        s_posts[_postId].author = address(0);
+        CSVars.s_posts[_postId].content = "";
+        CSVars.s_posts[_postId].author = address(0);
     }
 
     /**
@@ -444,10 +293,10 @@ contract SocialMedia is VRFConsumerBaseV2 {
         notOwner(_postId)
         hasNotVoted(_postId)
     {
-        s_posts[_postId].upvotes++;
-        s_hasVoted[msg.sender][_postId] = true;
+        CSVars.s_posts[_postId].upvotes++;
+        CSVars.s_hasVoted[msg.sender][_postId] = true;
         // s_voters.push(msg.sender);
-        address postAuthAddress = s_postIdToAuthor[_postId];
+        address postAuthAddress = CSVars.s_postIdToAuthor[_postId];
         string memory postAuthorName = getUserNameFromAddress(postAuthAddress);
         string memory upvoter = getUserNameFromAddress(msg.sender);
 
@@ -465,10 +314,10 @@ contract SocialMedia is VRFConsumerBaseV2 {
         notOwner(_postId)
         hasNotVoted(_postId)
     {
-        s_posts[_postId].downvotes++;
-        s_hasVoted[msg.sender][_postId] = true;
+        CSVars.s_posts[_postId].downvotes++;
+        CSVars.s_hasVoted[msg.sender][_postId] = true;
         // s_voters.push(msg.sender);
-        address postAuthAddress = s_postIdToAuthor[_postId];
+        address postAuthAddress = CSVars.s_postIdToAuthor[_postId];
         string memory postAuthorName = getUserNameFromAddress(postAuthAddress);
         string memory downvoterName = getUserNameFromAddress(msg.sender);
 
@@ -485,7 +334,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
         checkUserExists(msg.sender)
     {
         
-        uint256 commentId = s_postIdToComments[_postId].length;
+        uint256 commentId = CSVars.s_postIdToComments[_postId].length;
 
         Comment memory newComment = Comment({
             commentId: commentId,
@@ -499,8 +348,8 @@ contract SocialMedia is VRFConsumerBaseV2 {
         string memory postAuthor = getUserById(_postId).nickName;
         string memory commenter = getUserNameFromAddress(msg.sender);
 
-        s_postAndCommentIdToAddress[_postId][commentId] = msg.sender;
-        s_postIdToComments[_postId].push(newComment);
+        CSVars.s_postAndCommentIdToAddress[_postId][commentId] = msg.sender;
+        CSVars.s_postIdToComments[_postId].push(newComment);
 
         emit CommentCreated(commentId, postAuthor, commenter, _postId);
     }
@@ -517,7 +366,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
         string memory _content
     ) public onlyCommentOwner(_postId, _commentId) {
         // get the comment from the Blockchain (call by reference) and update it
-        s_postIdToComments[_postId][_commentId].content = _content;
+        CSVars.s_postIdToComments[_postId][_commentId].content = _content;
     }
 
     /**
@@ -533,8 +382,8 @@ contract SocialMedia is VRFConsumerBaseV2 {
         hasPaid
     {
         // get the comment from the Blockchain (call by reference) and update it
-        s_postIdToComments[_postId][_commentId].content = ""; // delete content
-        s_postIdToComments[_postId][_commentId].author = address(0); // delete address of comment author
+        CSVars.s_postIdToComments[_postId][_commentId].content = ""; // delete content
+        CSVars.s_postIdToComments[_postId][_commentId].author = address(0); // delete address of comment author
     }
 
     /**
@@ -547,13 +396,13 @@ contract SocialMedia is VRFConsumerBaseV2 {
         public
         checkUserExists(msg.sender)
     {
-        if(s_likedComment[_postId][_commentId][msg.sender] == false){
+        if(CSVars.s_likedComment[_postId][_commentId][msg.sender] == false){
             // There is need to note the users that like a comment
-            s_likedComment[_postId][_commentId][msg.sender] = true;
+            CSVars.s_likedComment[_postId][_commentId][msg.sender] = true;
             // retrieve the comment from the Blockchain in increment number of likes
-            s_postIdToComments[_postId][_commentId].likesCount++;
+            CSVars.s_postIdToComments[_postId][_commentId].likesCount++;
             // Add liker to an array of users that liked the comment
-            s_likersOfComment[_postId][_commentId].push(msg.sender);
+            CSVars.s_likersOfComment[_postId][_commentId].push(msg.sender);
         }
         
     }
@@ -576,22 +425,22 @@ contract SocialMedia is VRFConsumerBaseV2 {
         uint256 postScore = numOfUpvotes - numOfDownvotes > 0
             ? numOfUpvotes - numOfDownvotes
             : 0; // set minimum postScore to zero. We dont want negative values
-        isEligible = postScore >= MIN_POST_SCORE ? true : false; // a post is adjudged eligible for reward if the post has ten (10) more upvotes than downvotes
+        isEligible = postScore >= CSVars.MIN_POST_SCORE ? true : false; // a post is adjudged eligible for reward if the post has ten (10) more upvotes than downvotes
     }
 
     /**
      * @dev This function is to be called automatically using Chainlink Automation every VALIDITY_PERIOD (i.e. 30 days or as desirable). The function loops through an array of recentPosts and checks if posts are eligible for rewards and add the corresponding authors to an array of eligible authors for reward
      */
     function _pickIdsOfEligiblePosts() internal {
-        uint256 len = s_idsOfRecentPosts.length; // number of recent posts
+        uint256 len = CSVars.s_idsOfRecentPosts.length; // number of recent posts
         uint256 i; // define the counter variable
 
         /** Loop through the array and pick posts that are eligible for reward */
         for (i; i < len; ) {
             // Check if author is eligible for rewards and add their address to the array of eligible users
 
-            if (_isPostEligibleForReward(s_idsOfRecentPosts[i])) {
-                s_idsOfEligiblePosts.push(s_idsOfRecentPosts[i]);
+            if (_isPostEligibleForReward(CSVars.s_idsOfRecentPosts[i])) {
+                CSVars.s_idsOfEligiblePosts.push(CSVars.s_idsOfRecentPosts[i]);
             }
 
             unchecked {
@@ -599,7 +448,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
             }
         }
 
-        // return s_idsOfEligiblePosts;
+        // return CSVars.s_idsOfEligiblePosts;
     }
 
     /////////////////////////
@@ -632,11 +481,11 @@ contract SocialMedia is VRFConsumerBaseV2 {
         )
     {
         // call the _pickEligibleAuthors function to determine authors that are eligible for reward
-        _pickIdsOfEligiblePosts(); // this updates the s_idsOfEligiblePosts array
+        _pickIdsOfEligiblePosts(); // this updates the CSVars.s_idsOfEligiblePosts array
 
-        bool timeHasPassed = (block.timestamp - s_lastTimeStamp) >= i_interval; // checks if enough time has passed
+        bool timeHasPassed = (block.timestamp - CSVars.s_lastTimeStamp) >= CSVars.i_interval; // checks if enough time has passed
         bool hasBalance = address(this).balance > 0; // Contract has ETH
-        bool hasAuthors = s_idsOfEligiblePosts.length > 0; // Contract has players
+        bool hasAuthors = CSVars.s_idsOfEligiblePosts.length > 0; // Contract has players
         upkeepNeeded = (timeHasPassed && hasBalance && hasAuthors);
         return (upkeepNeeded, "0x0");
     }
@@ -648,9 +497,9 @@ contract SocialMedia is VRFConsumerBaseV2 {
 
         (bool upkeepNeeded, ) = CheckUpkeep(" ");
         if (!upkeepNeeded) {
-            revert SocialMedia__UpkeepNotNeeded(
+            revert ChainSphere__UpkeepNotNeeded(
                 address(this).balance,
-                s_idsOfEligiblePosts.length
+                CSVars.s_idsOfEligiblePosts.length
             );
         }
 
@@ -660,16 +509,16 @@ contract SocialMedia is VRFConsumerBaseV2 {
         // 2. Receive the random number generated
 
         // Interactions (with other Contracts)
-        s_numOfWords = s_idsOfEligiblePosts.length <= TWENTY
+        CSVars.s_numOfWords = CSVars.s_idsOfEligiblePosts.length <= CSVars.TWENTY
             ? 1
-            : uint32(s_idsOfEligiblePosts.length % TEN); // Pick one winner or a max ten percent of eligible winners
+            : uint32(CSVars.s_idsOfEligiblePosts.length % CSVars.TEN); // Pick one winner or a max ten percent of eligible winners
 
-        uint256 requestId = i_vrfCoordinator.requestRandomWords(
-            i_gasLane,
-            i_subscriptionId,
-            REQUEST_CONFIRMATIONS,
-            i_callbackGasLimit,
-            s_numOfWords
+        uint256 requestId = CSVars.i_vrfCoordinator.requestRandomWords(
+            CSVars.i_gasLane,
+            CSVars.i_subscriptionId,
+            CSVars.REQUEST_CONFIRMATIONS,
+            CSVars.i_callbackGasLimit,
+            CSVars.s_numOfWords
         );
 
         emit RequestWinningAuthor(requestId);
@@ -683,37 +532,37 @@ contract SocialMedia is VRFConsumerBaseV2 {
 
         // Effects (on our Contract)
 
-        s_idsOfRecentWinningPosts = new uint256[](0); // reset array of postId of most recent winning posts
+        CSVars.s_idsOfRecentWinningPosts = new uint256[](0); // reset array of postId of most recent winning posts
 
         if (randomWords.length == 1) {
-            uint256 ranNumber = randomWords[0] % s_idsOfEligiblePosts.length;
-            uint256 idOfWinningPost = s_idsOfEligiblePosts[ranNumber]; // get the postId
-            s_idsOfRecentWinningPosts.push(idOfWinningPost);
+            uint256 ranNumber = randomWords[0] % CSVars.s_idsOfEligiblePosts.length;
+            uint256 idOfWinningPost = CSVars.s_idsOfEligiblePosts[ranNumber]; // get the postId
+            CSVars.s_idsOfRecentWinningPosts.push(idOfWinningPost);
             address payable winner = payable(
                 getPostById(idOfWinningPost).author
             );
 
             // reset the s_recentPosts array
-            s_idsOfRecentPosts = new uint256[](0); // reset the array of recent posts
-            s_lastTimeStamp = block.timestamp; // reset the timer for the next interval of posts to be considered
+            CSVars.s_idsOfRecentPosts = new uint256[](0); // reset the array of recent posts
+            CSVars.s_lastTimeStamp = block.timestamp; // reset the timer for the next interval of posts to be considered
 
             emit PickedWinner(winner);
 
             // Interactions (With other Contracts)
 
             // pay the winner
-            (bool success, ) = winner.call{value: WINNING_REWARD}("");
+            (bool success, ) = winner.call{value: CSVars.WINNING_REWARD}("");
             if (!success) {
-                revert SocialMedia__TransferFailed();
+                revert ChainSphere__TransferFailed();
             }
         } else {
             uint256 len = randomWords.length;
             uint256 i;
             for (i; i < len; ) {
                 uint256 ranNumber = randomWords[i] %
-                    s_idsOfEligiblePosts.length;
-                uint256 idOfWinningPost = s_idsOfEligiblePosts[ranNumber]; // get the postId
-                s_idsOfRecentWinningPosts.push(idOfWinningPost);
+                    CSVars.s_idsOfEligiblePosts.length;
+                uint256 idOfWinningPost = CSVars.s_idsOfEligiblePosts[ranNumber]; // get the postId
+                CSVars.s_idsOfRecentWinningPosts.push(idOfWinningPost);
                 address payable winner = payable(
                     getPostById(idOfWinningPost).author
                 );
@@ -723,9 +572,9 @@ contract SocialMedia is VRFConsumerBaseV2 {
                 // Interactions (With other Contracts)
 
                 // pay the winner
-                (bool success, ) = winner.call{value: WINNING_REWARD}("");
+                (bool success, ) = winner.call{value: CSVars.WINNING_REWARD}("");
                 if (!success) {
-                    revert SocialMedia__BatchTransferFailed(winner);
+                    revert ChainSphere__BatchTransferFailed(winner);
                 }
 
                 unchecked {
@@ -747,20 +596,20 @@ contract SocialMedia is VRFConsumerBaseV2 {
         view
         returns (uint256)
     {
-        uint256 usdValue = _ethAmount.getConversionRate(s_priceFeed);
+        uint256 usdValue = _ethAmount.getConversionRate(CSVars.s_priceFeed);
         return usdValue;
     }
 
     function getIdsOfRecentWinningPosts() public view returns (uint256[] memory) {
-        return s_idsOfRecentWinningPosts;
+        return CSVars.s_idsOfRecentWinningPosts;
     }
 
     function getIdsOfRecentPosts() public view returns (uint256[] memory) {
-        return s_idsOfRecentPosts;
+        return CSVars.s_idsOfRecentPosts;
     }
 
     function getIdsOfEligiblePosts() public view returns (uint256[] memory) {
-        return s_idsOfEligiblePosts;
+        return CSVars.s_idsOfEligiblePosts;
     }
 
     /**
@@ -769,7 +618,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
     * @return function returns the profile of the user
      */
     function getUser(address _userAddress) public view returns (User memory) {
-        return s_addressToUserProfile[_userAddress];
+        return CSVars.s_addressToUserProfile[_userAddress];
     }
 
     /**
@@ -783,7 +632,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
         returns (Post[] memory)
     {
         // Implementation to retrieve all posts by a user
-        return userPosts[_userAddress];
+        return CSVars.userPosts[_userAddress];
     }
 
     /**
@@ -795,13 +644,16 @@ contract SocialMedia is VRFConsumerBaseV2 {
         return s_users[_userId];
     }
 
+    function getUserVoteStatus(uint256 _postId) public view returns(bool){
+        return CSVars.s_hasVoted[msg.sender][_postId];
+    }
     /**
     * @dev function retrieves all information on a post given the postId
     * @param _postId is the id of the post. The postId is unique
     * @return function returns the post corresponding to that postId
      */
     function getPostById(uint256 _postId) public view returns (Post memory) {
-        return s_posts[_postId];
+        return CSVars.s_posts[_postId];
     }
 
     /**
@@ -815,7 +667,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
         view
         returns (Comment memory)
     {
-        return s_postIdToComments[_postId][_commentId];
+        return CSVars.s_postIdToComments[_postId][_commentId];
     }
 
     /**
@@ -828,7 +680,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
         uint256 _postId,
         uint256 _commentId
     ) public view returns (address[] memory) {
-        return s_likersOfComment[_postId][_commentId];
+        return CSVars.s_likersOfComment[_postId][_commentId];
     }
 
     /**
@@ -842,7 +694,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
         returns (Comment[] memory)
     {
         // Implementation to retrieve all comments by a user
-        return userComments[_userAddress];
+        return CSVars.userComments[_userAddress];
     }
 
     /**
@@ -855,15 +707,23 @@ contract SocialMedia is VRFConsumerBaseV2 {
         view
         returns (string memory nickNameOfUser)
     {
-        // User memory user = s_addressToUserProfile[_userAddress];
-        nickNameOfUser = s_addressToUserProfile[_userAddress].nickName;
+        // User memory user = CSVars.s_addressToUserProfile[_userAddress];
+        nickNameOfUser = CSVars.s_addressToUserProfile[_userAddress].nickName;
     }
 
+    /**
+    * @dev function retrieves userAddress given username(i.e. nickname) of user
+    * @param _username is the username or nick name of user
+    * @notice function returns wallet address of the user
+     */
+    function getAddressFromUsername(string memory _username) public view returns(address) {
+        return CSVars.s_usernameToAddress[_username];
+    }
     /**
     * @dev This function retrieves all post on the blockchain
      */
     function getAllPosts() public view returns (Post[] memory) {
-        return s_posts;
+        return CSVars.s_posts;
     }
 
     // Owner functions
@@ -872,7 +732,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
     }
 
     function getContractOwner() public view returns (address) {
-        return s_owner;
+        return CSVars.s_owner;
     }
 
     function transferContractBalance(address payable _to) public onlyOwner {
@@ -880,7 +740,7 @@ contract SocialMedia is VRFConsumerBaseV2 {
     }
 
     function changeOwner(address _newOwner) public onlyOwner {
-        s_owner = _newOwner;
+        CSVars.s_owner = _newOwner;
     }
 
 
