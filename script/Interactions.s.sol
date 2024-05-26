@@ -89,20 +89,20 @@ contract FundSubscription is Script{
 
 contract AddConsumer is Script {
     function addConsumer(
-        address socialMedia, 
+        address chainSphere, 
         address vrfCoordinator, 
         uint64 subId, 
         uint256 deployerKey
     ) public {
-        console.log("Adding Consumer: ", socialMedia);
+        console.log("Adding Consumer: ", chainSphere);
         console.log("Using vrfCoordinator: ", vrfCoordinator);
         console.log("On ChainID: ", block.chainid);
         vm.startBroadcast(deployerKey);
-        VRFCoordinatorV2Mock(vrfCoordinator).addConsumer(subId, socialMedia);
+        VRFCoordinatorV2Mock(vrfCoordinator).addConsumer(subId, chainSphere);
         vm.stopBroadcast();
     }
 
-    function addConsumerUsingConfig(address socialMedia) public {
+    function addConsumerUsingConfig(address chainSphere) public {
         HelperConfig helperConfig = new HelperConfig();
         (
              , 
@@ -114,13 +114,13 @@ contract AddConsumer is Script {
              ,
              uint256 deployerKey
         ) = helperConfig.activeNetworkConfig();
-        addConsumer(socialMedia, vrfCoordinator, subId, deployerKey);
+        addConsumer(chainSphere, vrfCoordinator, subId, deployerKey);
     }
 
     function run() external{
-        address socialMedia = DevOpsTools.get_most_recent_deployment(
-            "SocialMedia", block.chainid
+        address chainSphere = DevOpsTools.get_most_recent_deployment(
+            "ChainSphere", block.chainid
         );
-        addConsumerUsingConfig(socialMedia);
+        addConsumerUsingConfig(chainSphere);
     }
 } 
