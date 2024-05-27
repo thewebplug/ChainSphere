@@ -3,12 +3,12 @@
 pragma solidity ^0.8.18;
 
 import { Script } from "forge-std/Script.sol";
-import { SocialMedia } from "../src/SocialMedia.sol";
+import { ChainSphere } from "../src/ChainSphere.sol";
 import { HelperConfig} from "./HelperConfig.s.sol";
 import { CreateSubscription, FundSubscription, AddConsumer } from "./Interactions.s.sol";
 
-contract DeploySocialMedia is Script {
-    function run() external returns(SocialMedia, HelperConfig){
+contract DeployChainSphere is Script {
+    function run() external returns(ChainSphere, HelperConfig){
         HelperConfig helperConfig = new HelperConfig();
         // Destructuring our struct
         (
@@ -35,7 +35,7 @@ contract DeploySocialMedia is Script {
         }
         
         vm.startBroadcast();
-        SocialMedia socialMedia = new SocialMedia(
+        ChainSphere chainSphere = new ChainSphere(
             priceFeed, 
             interval,
             vrfCoordinator,
@@ -49,9 +49,9 @@ contract DeploySocialMedia is Script {
 
         AddConsumer addConsumer = new AddConsumer();
         addConsumer.addConsumer(
-            address(socialMedia), vrfCoordinator, subscriptionId, deployerKey
+            address(chainSphere), vrfCoordinator, subscriptionId, deployerKey
         );
 
-        return (socialMedia, helperConfig);
+        return (chainSphere, helperConfig);
     }
 }

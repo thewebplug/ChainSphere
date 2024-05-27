@@ -3,14 +3,15 @@
 pragma solidity ^0.8.18;
 
 import { Test, console} from "forge-std/Test.sol";
-import { SocialMedia } from "../../src/SocialMedia.sol";
-import { DeploySocialMedia } from "../../script/DeploySocialMedia.s.sol";
+import { ChainSphere } from "../../src/ChainSphere.sol";
+import { ChainSphereVars } from "../../src/ChainSphereVars.sol";
+import { DeployChainSphere } from "../../script/DeployChainSphere.s.sol";
 import { HelperConfig } from "../../script/HelperConfig.s.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { VRFCoordinatorV2Mock } from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
 
 
-contract SocialMediaTest is Test {
+contract ChainSphereTest is Test {
     
     ///////////////////////////////////
     /// Type Declarations (Structs) ///
@@ -43,8 +44,8 @@ contract SocialMediaTest is Test {
     }
 
     // Declaring variable types
-    SocialMedia socialMedia;
-    DeploySocialMedia deployer;
+    ChainSphere chainSphere;
+    DeployChainSphere deployer;
     HelperConfig helperConfig;
 
     address priceFeed;
@@ -80,8 +81,8 @@ contract SocialMediaTest is Test {
     
 
     function setUp() public {
-        deployer = new DeploySocialMedia();
-        (socialMedia, helperConfig) = deployer.run();
+        deployer = new DeployChainSphere();
+        (chainSphere, helperConfig) = deployer.run();
 
         (
             priceFeed,
@@ -104,11 +105,12 @@ contract SocialMediaTest is Test {
     // This Modifier is created since this task will be repeated a couple of times
     modifier registerOneUser() {
         string memory myName = "Nengak Goltong";
+        string memory myNickName = "Spo";
         string memory myBio = "I love to code";
         string memory myImgHash = "";
         
         vm.prank(USER);
-        socialMedia.registerUser(myName, myBio, myImgHash);
+        chainSphere.registerUser(myName, myNickName);
         _;
     }
 
@@ -122,49 +124,47 @@ contract SocialMediaTest is Test {
     /** Test Passes as expected */
     function testUserCanRegister() public registerOneUser {
         string memory myName = "Nengak Goltong";
-        string memory myBio = "I love to code";
+        string memory myNickName = "Spo";
         string memory expectedName;
-        string memory expectedBio;
+        string memory expectedNickName;
         
         // get name of user from the Blockchain
-        expectedName = socialMedia.getUserById(0).name;
-        console.log("Registered User Name: %s", expectedName);
+        expectedNickName = chainSphere.getUserById(0).nickName;
+        console.log("Registered User Name: %s", expectedNickName);
 
-        expectedBio = socialMedia.getUserById(0).bio;
-        console.log("Registered User Bio: %s", expectedBio);
+        expectedName = chainSphere.getUserById(0).fullNameOfUser;
+        console.log("Registered User Bio: %s", expectedName);
         assertEq(
             keccak256(abi.encodePacked(myName)), 
             keccak256(abi.encodePacked(expectedName))
         );
         assertEq(
-            keccak256(abi.encodePacked(myBio)), 
-            keccak256(abi.encodePacked(expectedBio))
+            keccak256(abi.encodePacked(myNickName)), 
+            keccak256(abi.encodePacked(expectedNickName))
         );
     }
 
     // Test reverts as expected. Test passes
     function testUserCantRegisterIfUsernameAlreadyExists() public registerOneUser{
         string memory myName = "Nengak Goltong";
-        string memory myBio = "I love to code in Solidity";
-        string memory myImgHash = "";
+        string memory myNickName = "Spo";
         
-        // The test is expected to revert with `SocialMedia__UsernameAlreadyTaken` message since the username is registered already
+        // The test is expected to revert with `chainSphere__UsernameAlreadyTaken` message since the username is registered already
         vm.expectRevert(
-            SocialMedia.SocialMedia__UsernameAlreadyTaken.selector
+            ChainSphereVars.ChainSphere__UsernameAlreadyTaken.selector
         );
         vm.prank(USER);
-        socialMedia.registerUser(myName, myBio, myImgHash);
+        chainSphere.registerUser(myName, myNickName);
     }
 
     function testEmitsEventAfterUserRegistration() public {
         string memory myName = "Nengak Goltong";
-        string memory myBio = "I love to code in Solidity";
-        string memory myImgHash = "";
+        string memory myNickName = "Spo";
         
-        vm.expectEmit(true, false, false, false, address(socialMedia));
+        vm.expectEmit(true, false, false, false, address(chainSphere));
         emit UserRegistered(0, USER, myName);
         vm.prank(USER);
-        socialMedia.registerUser(myName, myBio, myImgHash);
+        chainSphere.registerUser(myName, myNickName);
     }
 
     //////////////////////////////
@@ -182,7 +182,7 @@ contract SocialMediaTest is Test {
         for(i = 0; i <len; ){
             address newUser = makeAddr(string(names[i])); 
             vm.prank(newUser);
-            socialMedia.registerUser(names[i], myBio, myImgHash);
+            chainSphere.registerUser(names[i], names[i]);
             unchecked {
                 i++;
             }
@@ -197,10 +197,10 @@ contract SocialMediaTest is Test {
 
         // Test is expected to revert since user does not exist on the blockchain
         vm.expectRevert(
-            SocialMedia.SocialMedia__UserDoesNotExist.selector
+            ChainSphereVars.ChainSphere__UserDoesNotExist.selector
         );
         vm.prank(RAN_USER);
-        socialMedia.changeUsername(USER_ZERO, newName);
+        chainSphere.changeUsername(USER_ZERO, newName);
 
     }
 
@@ -211,10 +211,10 @@ contract SocialMediaTest is Test {
 
         // Test is expected to revert since the new username already exists on the blockchain
         vm.expectRevert(
-            SocialMedia.SocialMedia__UsernameAlreadyTaken.selector
+            ChainSphereVars.ChainSphere__UsernameAlreadyTaken.selector
         );
         vm.prank(RAN_USER);
-        socialMedia.changeUsername(USER_ZERO, newName);
+        chainSphere.changeUsername(USER_ZERO, newName);
 
     }
 
@@ -226,10 +226,10 @@ contract SocialMediaTest is Test {
 
         // Test is expected to revert since the nuser is not the profile owner
         vm.expectRevert(
-            SocialMedia.SocialMedia__NotProfileOwner.selector
+            ChainSphereVars.ChainSphere__NotProfileOwner.selector
         );
         vm.prank(RAN_USER);
-        socialMedia.changeUsername(USER_ZERO, newName);
+        chainSphere.changeUsername(USER_ZERO, newName);
 
     }
 
@@ -242,10 +242,10 @@ contract SocialMediaTest is Test {
 
         // Test is expected to pass
         vm.prank(RAN_USER);
-        socialMedia.changeUsername(USER_ZERO, newName);
+        chainSphere.changeUsername(USER_ZERO, newName);
 
         // get name of user from the Blockchain
-        expectedName = socialMedia.getUserById(USER_ZERO).name;
+        expectedName = chainSphere.getUserById(USER_ZERO).nickName;
         console.log("User Name: %s", expectedName);
 
         assertEq(
@@ -266,10 +266,10 @@ contract SocialMediaTest is Test {
 
         // Note that USER has not registered and as such, we expect test to revert
         vm.expectRevert(
-            SocialMedia.SocialMedia__UserDoesNotExist.selector
+            ChainSphereVars.ChainSphere__UserDoesNotExist.selector
         );
         vm.prank(USER);
-        socialMedia.createPost(content, imgHash);
+        chainSphere.createPost(content, imgHash);
     }
 
     // Test Passes as expected
@@ -278,10 +278,10 @@ contract SocialMediaTest is Test {
         string memory imgHash = "";
 
         vm.prank(USER);
-        socialMedia.createPost(content, imgHash);
-        console.log(socialMedia.getPostById(0).content);
+        chainSphere.createPost(content, imgHash);
+        console.log(chainSphere.getPostById(0).content);
         // retrieve content from the blockchain
-        string memory retrievedContent = socialMedia.getPostById(0).content;
+        string memory retrievedContent = chainSphere.getPostById(0).content;
         
         assertEq(
             keccak256(abi.encodePacked(retrievedContent)),
@@ -293,12 +293,12 @@ contract SocialMediaTest is Test {
     function testEventEmitsWhenPostIsCreated() public registerOneUser {
         string memory content = "Come and See";
         string memory imgHash = "";
-        string memory myName = socialMedia.getUserNameFromAddress(USER);
+        string memory myName = chainSphere.getUserNameFromAddress(USER);
 
-        vm.expectEmit(true, false, false, false, address(socialMedia));
+        vm.expectEmit(true, false, false, false, address(chainSphere));
         emit PostCreated(0, myName);
         vm.prank(USER);
-        socialMedia.createPost(content, imgHash);
+        chainSphere.createPost(content, imgHash);
         
     }
 
@@ -322,9 +322,9 @@ contract SocialMediaTest is Test {
             vm.deal(newUser, STARTING_BALANCE);
             vm.startPrank(newUser);
             // register newUser
-            socialMedia.registerUser(names[i], myBio, myImgHash);
+            chainSphere.registerUser(names[i], names[i]);
             // newUser makes a post
-            socialMedia.createPost(myContent, myImgHash);
+            chainSphere.createPost(myContent, myImgHash);
             vm.stopPrank();
             unchecked {
                 i++;
@@ -338,48 +338,48 @@ contract SocialMediaTest is Test {
         // Test is expected to revert because we will prank a user to try editing a post of another user
 
         // Get the address of the author of the first post 
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
         string memory newContent = "Immaculate Heart of Mary";
         string memory imgHash = "";
 
         vm.expectRevert(
-            SocialMedia.SocialMedia__NotPostOwner.selector
+            ChainSphereVars.ChainSphere__NotPostOwner.selector
         );
         vm.prank(firstUser);
-        socialMedia.editPost(1, newContent, imgHash);
+        chainSphere.editPost(1, newContent, imgHash);
 
     }
 
     // Test passes
-    function testOwnerCantEditPostWithoutPaying() public registerThreeUsersAndPost {
-        // Test is expected to revert because a user will try editing their post without making payment
+    // function testOwnerCantEditPostWithoutPaying() public registerThreeUsersAndPost {
+    //     // Test is expected to revert because a user will try editing their post without making payment
 
-        // Get the address of the author of the first post 
-        address firstUser = socialMedia.getPostById(0).author;
-        string memory newContent = "Immaculate Heart of Mary";
-        string memory imgHash = "";
+    //     // Get the address of the author of the first post 
+    //     address firstUser = chainSphere.getPostById(0).author;
+    //     string memory newContent = "Immaculate Heart of Mary";
+    //     string memory imgHash = "";
 
-        vm.expectRevert(
-            SocialMedia.SocialMedia__PaymentNotEnough.selector
-        );
-        vm.prank(firstUser);
-        socialMedia.editPost(0, newContent, imgHash);
+    //     vm.expectRevert(
+    //         ChainSphere.ChainSphere__PaymentNotEnough.selector
+    //     );
+    //     vm.prank(firstUser);
+    //     chainSphere.editPost(0, newContent, imgHash);
 
-    }
+    // }
 
     // Test passes
-    function testOwnerCanEditPostAfterPaying() public registerThreeUsersAndPost {
+    function testOwnerCanEditPost() public registerThreeUsersAndPost {
         // Test is expected to pass because a user will pay for editing their post
 
         // Get the address of the author of the first post 
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
         string memory newContent = "Immaculate Heart of Mary";
         string memory imgHash = "";
 
         vm.prank(firstUser);
-        socialMedia.editPost{value: EDITING_FEE}(0, newContent, imgHash);
+        chainSphere.editPost(0, newContent, imgHash);
         
-        string memory retrievedContent = socialMedia.getPostById(0).content;
+        string memory retrievedContent = chainSphere.getPostById(0).content;
         assertEq(
             keccak256(abi.encodePacked(retrievedContent)),
             keccak256(abi.encodePacked(newContent))
@@ -389,32 +389,17 @@ contract SocialMediaTest is Test {
 
     // Test Passes as expected
     function testEventEmitsWhenPostIsEdited() public registerThreeUsersAndPost {
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
         string memory newContent = "Immaculate Heart of Mary";
         string memory imgHash = "";
         
-        string memory myName = socialMedia.getUserNameFromAddress(firstUser);
+        string memory myName = chainSphere.getUserNameFromAddress(firstUser);
 
-        vm.expectEmit(true, false, false, false, address(socialMedia));
+        vm.expectEmit(true, false, false, false, address(chainSphere));
         emit PostEdited(0, myName);
         vm.prank(firstUser);
-        socialMedia.editPost{value: EDITING_FEE}(0, newContent, imgHash);
+        chainSphere.editPost(0, newContent, imgHash);
         
-    }
-
-    // Test passes
-    function testContractReceivesPayment() public registerThreeUsersAndPost {
-        address firstUser = socialMedia.getPostById(0).author;
-        string memory newContent = "Immaculate Heart of Mary";
-        string memory imgHash = "";
-
-        vm.prank(firstUser);
-        socialMedia.editPost{value: EDITING_FEE}(0, newContent, imgHash);
-        address owner = socialMedia.getContractOwner();
-        vm.prank(owner);
-        uint256 contractBalance = socialMedia.getBalance();
-        console.log(contractBalance);
-        assertEq(contractBalance, EDITING_FEE);
     }
 
     ///////////////////////
@@ -426,13 +411,13 @@ contract SocialMediaTest is Test {
         // Test is expected to revert because we will prank a user to try editing a post of another user
 
         // Get the address of the author of the first post 
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
 
         vm.expectRevert(
-            SocialMedia.SocialMedia__NotPostOwner.selector
+            ChainSphereVars.ChainSphere__NotPostOwner.selector
         );
         vm.prank(firstUser);
-        socialMedia.deletePost(1);
+        chainSphere.deletePost(1);
 
     }
 
@@ -441,13 +426,13 @@ contract SocialMediaTest is Test {
         // Test is expected to revert because a user will try editing their post without making payment
 
         // Get the address of the author of the first post 
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
 
         vm.expectRevert(
-            SocialMedia.SocialMedia__PaymentNotEnough.selector
+            ChainSphereVars.ChainSphere__PaymentNotEnough.selector
         );
         vm.prank(firstUser);
-        socialMedia.deletePost(0);
+        chainSphere.deletePost(0);
 
     }
 
@@ -456,13 +441,13 @@ contract SocialMediaTest is Test {
         // Test is expected to pass because a user will pay for editing their post
 
         // Get the address of the author of the first post 
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
 
         vm.prank(firstUser);
-        socialMedia.deletePost{value: EDITING_FEE}(0);
+        chainSphere.deletePost{value: EDITING_FEE}(0);
         
-        string memory retrievedContent = socialMedia.getPostById(0).content;
-        address retrievedAddress = socialMedia.getPostById(0).author;
+        string memory retrievedContent = chainSphere.getPostById(0).content;
+        address retrievedAddress = chainSphere.getPostById(0).author;
         assertEq(
             keccak256(abi.encodePacked(retrievedContent)),
             keccak256(abi.encodePacked(""))
@@ -474,13 +459,13 @@ contract SocialMediaTest is Test {
     
     // Test passes
     function testContractReceivesPaymentWhenPostIsDeleted() public registerThreeUsersAndPost {
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
 
         vm.prank(firstUser);
-        socialMedia.deletePost{value: EDITING_FEE}(0);
-        address owner = socialMedia.getContractOwner();
+        chainSphere.deletePost{value: EDITING_FEE}(0);
+        address owner = chainSphere.getContractOwner();
         vm.prank(owner);
-        uint256 contractBalance = socialMedia.getBalance();
+        uint256 contractBalance = chainSphere.getBalance();
         console.log(contractBalance);
         assertEq(contractBalance, EDITING_FEE);
     }
@@ -491,49 +476,49 @@ contract SocialMediaTest is Test {
 
     function testUserCantUpvotePostIfTheyAreTheOwner() public registerThreeUsersAndPost{
         // Test is expected to revert since no one can upvote their post
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
 
         vm.expectRevert(
-            SocialMedia.SocialMedia__OwnerCannotVote.selector
+            ChainSphereVars.ChainSphere__OwnerCannotVote.selector
         );
         vm.prank(firstUser);
-        socialMedia.upvote(0);
+        chainSphere.upvote(0);
     }
 
     function testUserCanUpvotePostIfTheyAreNotTheOwner() public registerThreeUsersAndPost{
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
 
         vm.prank(firstUser);
-        socialMedia.upvote(1);
-        uint256 numUpvotes = socialMedia.getPostById(1).upvotes;
+        chainSphere.upvote(1);
+        uint256 numUpvotes = chainSphere.getPostById(1).upvotes;
         uint256 expectedUpvotes = 1;
         assertEq(numUpvotes, expectedUpvotes);
     }
 
     function testUserCantUpvoteSamePostMoreThanOnce() public registerThreeUsersAndPost{
         // Test is expected to revert since no one can upvote their post
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
 
         vm.prank(firstUser);
-        socialMedia.upvote(1); //cast upvote first time
+        chainSphere.upvote(1); //cast upvote first time
         vm.expectRevert(
-            SocialMedia.SocialMedia__AlreadyVoted.selector
+            ChainSphereVars.ChainSphere__AlreadyVoted.selector
         );
         vm.prank(firstUser);
-        socialMedia.upvote(1); // cast upvote for the second time on the same post
+        chainSphere.upvote(1); // cast upvote for the second time on the same post
     }
 
     // Test passed
     function testUserCanUpvoteMultiplePostsIfTheyAreNotTheOwner() public registerThreeUsersAndPost{
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
 
         vm.startPrank(firstUser);
-        socialMedia.upvote(1);
-        socialMedia.upvote(2);
+        chainSphere.upvote(1);
+        chainSphere.upvote(2);
         vm.stopPrank();
 
-        uint256 num1Upvotes = socialMedia.getPostById(1).upvotes;
-        uint256 num2Upvotes = socialMedia.getPostById(2).upvotes;
+        uint256 num1Upvotes = chainSphere.getPostById(1).upvotes;
+        uint256 num2Upvotes = chainSphere.getPostById(2).upvotes;
         uint256 expectedUpvotes = 1;
         assertEq(num1Upvotes, expectedUpvotes);
         assertEq(num2Upvotes, expectedUpvotes);
@@ -541,17 +526,17 @@ contract SocialMediaTest is Test {
 
     // Test passes
     function testEmitsEventWhenPostGetsAnUpvote() public registerThreeUsersAndPost{
-        address upvoter = socialMedia.getPostById(0).author;
-        address postAuthor = socialMedia.getPostById(1).author;
+        address upvoter = chainSphere.getPostById(0).author;
+        address postAuthor = chainSphere.getPostById(1).author;
 
-        string memory voterName = socialMedia.getUserNameFromAddress(upvoter);
-        string memory postAuthorName = socialMedia.getUserNameFromAddress(postAuthor);
+        string memory voterName = chainSphere.getUserNameFromAddress(upvoter);
+        string memory postAuthorName = chainSphere.getUserNameFromAddress(postAuthor);
 
-        vm.expectEmit(true, false, false, false, address(socialMedia));
+        vm.expectEmit(true, false, false, false, address(chainSphere));
         emit Upvoted(1, postAuthorName, voterName);
         
         vm.startPrank(upvoter);
-        socialMedia.upvote(1);
+        chainSphere.upvote(1);
         vm.stopPrank();
         
     }
@@ -562,50 +547,50 @@ contract SocialMediaTest is Test {
 
     function testUserCantDownvotePostIfTheyAreTheOwner() public registerThreeUsersAndPost{
         // Test is expected to revert since no one can upvote their post
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
 
         vm.expectRevert(
-            SocialMedia.SocialMedia__OwnerCannotVote.selector
+            ChainSphereVars.ChainSphere__OwnerCannotVote.selector
         );
         vm.prank(firstUser);
-        socialMedia.downvote(0);
+        chainSphere.downvote(0);
     }
 
     // Test passes
     function testUserCanDownvotePostIfTheyAreNotTheOwner() public registerThreeUsersAndPost{
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
 
         vm.prank(firstUser);
-        socialMedia.downvote(1);
-        uint256 numDownvotes = socialMedia.getPostById(1).downvotes;
+        chainSphere.downvote(1);
+        uint256 numDownvotes = chainSphere.getPostById(1).downvotes;
         uint256 expectedDownvotes = 1;
         assertEq(numDownvotes, expectedDownvotes);
     }
 
     function testUserCantDownvoteSamePostMoreThanOnce() public registerThreeUsersAndPost{
         // Test is expected to revert since no one can upvote their post
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
 
         vm.prank(firstUser);
-        socialMedia.downvote(1); //cast downvote first time
+        chainSphere.downvote(1); //cast downvote first time
         vm.expectRevert(
-            SocialMedia.SocialMedia__AlreadyVoted.selector
+            ChainSphereVars.ChainSphere__AlreadyVoted.selector
         );
         vm.prank(firstUser);
-        socialMedia.downvote(1); // cast downvote for the second time on the same post
+        chainSphere.downvote(1); // cast downvote for the second time on the same post
     }
 
     // Test passed
     function testUserCanDownvoteMultiplePostsIfTheyAreNotTheOwner() public registerThreeUsersAndPost{
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
 
         vm.startPrank(firstUser);
-        socialMedia.downvote(1);
-        socialMedia.downvote(2);
+        chainSphere.downvote(1);
+        chainSphere.downvote(2);
         vm.stopPrank();
 
-        uint256 num1Downvotes = socialMedia.getPostById(1).downvotes;
-        uint256 num2Downvotes = socialMedia.getPostById(2).downvotes;
+        uint256 num1Downvotes = chainSphere.getPostById(1).downvotes;
+        uint256 num2Downvotes = chainSphere.getPostById(2).downvotes;
         uint256 expectedDownvotes = 1;
         assertEq(num1Downvotes, expectedDownvotes);
         assertEq(num2Downvotes, expectedDownvotes);
@@ -613,17 +598,17 @@ contract SocialMediaTest is Test {
 
     // Test passes
     function testEmitsEventWhenPostGetsAnDownvote() public registerThreeUsersAndPost{
-        address downvoter = socialMedia.getPostById(0).author;
-        address postAuthor = socialMedia.getPostById(1).author;
+        address downvoter = chainSphere.getPostById(0).author;
+        address postAuthor = chainSphere.getPostById(1).author;
 
-        string memory voterName = socialMedia.getUserNameFromAddress(downvoter);
-        string memory postAuthorName = socialMedia.getUserNameFromAddress(postAuthor);
+        string memory voterName = chainSphere.getUserNameFromAddress(downvoter);
+        string memory postAuthorName = chainSphere.getUserNameFromAddress(postAuthor);
 
-        vm.expectEmit(true, false, false, false, address(socialMedia));
+        vm.expectEmit(true, false, false, false, address(chainSphere));
         emit Downvoted(1, postAuthorName, voterName);
         
         vm.startPrank(downvoter);
-        socialMedia.downvote(1);
+        chainSphere.downvote(1);
         vm.stopPrank();
         
     }
@@ -635,29 +620,29 @@ contract SocialMediaTest is Test {
     // Test passes
     function testUserCantUpvoteAndDownvoteSamePost() public registerThreeUsersAndPost{
         // Test is expected to revert 
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
 
         vm.prank(firstUser);
-        socialMedia.upvote(1); // user 0 gives an upvote to post of user 1
+        chainSphere.upvote(1); // user 0 gives an upvote to post of user 1
         vm.expectRevert(
-            SocialMedia.SocialMedia__AlreadyVoted.selector
+            ChainSphereVars.ChainSphere__AlreadyVoted.selector
         );
         vm.prank(firstUser);
-        socialMedia.downvote(1); // user 0 gives a downvote to post of user 1
+        chainSphere.downvote(1); // user 0 gives a downvote to post of user 1
     }
 
     // Test passes
     function testUserCantDownvoteAndUpvoteSamePost() public registerThreeUsersAndPost{
         // Test is expected to revert
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
 
         vm.prank(firstUser);
-        socialMedia.downvote(1); // user 0 gives an downvote to post of user 1
+        chainSphere.downvote(1); // user 0 gives an downvote to post of user 1
         vm.expectRevert(
-            SocialMedia.SocialMedia__AlreadyVoted.selector
+            ChainSphereVars.ChainSphere__AlreadyVoted.selector
         );
         vm.prank(firstUser);
-        socialMedia.upvote(1); // user 0 gives a upvote to post of user 1
+        chainSphere.upvote(1); // user 0 gives a upvote to post of user 1
     }
 
     //////////////////////////
@@ -670,22 +655,22 @@ contract SocialMediaTest is Test {
 
         // Note that USER has not registered and as such, we expect test to revert
         vm.expectRevert(
-            SocialMedia.SocialMedia__UserDoesNotExist.selector
+            ChainSphereVars.ChainSphere__UserDoesNotExist.selector
         );
         vm.prank(USER);
-        socialMedia.createComment(0, content);
+        chainSphere.createComment(0, content);
     }
 
     // Test Passes as expected
     function testRegisteredUserCanCreateComment() public registerThreeUsersAndPost{
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
         string memory content = "Praise God";
 
         vm.prank(firstUser);
-        socialMedia.createComment(0, content);
+        chainSphere.createComment(0, content);
 
         // retrieve comment from the blockchain
-        string memory expectedContent = socialMedia.getCommentByPostIdAndCommentId(0,0).content;
+        string memory expectedContent = chainSphere.getCommentByPostIdAndCommentId(0,0).content;
         console.log(expectedContent);
     
         assertEq(
@@ -696,16 +681,16 @@ contract SocialMediaTest is Test {
 
     // Test Passes as expected
     function testEventEmitsWhenCommentIsCreated() public registerThreeUsersAndPost{
-        address firstUser = socialMedia.getPostById(0).author;
-        address author = socialMedia.getPostById(1).author;
+        address firstUser = chainSphere.getPostById(0).author;
+        address author = chainSphere.getPostById(1).author;
         string memory content = "Praise God";
-        string memory commentAuthor = socialMedia.getUserNameFromAddress(firstUser);
-        string memory postAuthor = socialMedia.getUserNameFromAddress(author);
+        string memory commentAuthor = chainSphere.getUserNameFromAddress(firstUser);
+        string memory postAuthor = chainSphere.getUserNameFromAddress(author);
 
-        vm.expectEmit(true, false, false, false, address(socialMedia));
+        vm.expectEmit(true, false, false, false, address(chainSphere));
         emit CommentCreated(0, postAuthor, commentAuthor, 0);
         vm.prank(firstUser);
-        socialMedia.createComment(1, content);
+        chainSphere.createComment(1, content);
     }   
 
     ////////////////////////
@@ -718,55 +703,56 @@ contract SocialMediaTest is Test {
         // Test is expected to revert because we will prank a user to try editing a comment of another user
 
         // Get the address of the author of the first post 
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
         string memory content = "Praise God";
         string memory newContent = "For He is good";
 
         vm.prank(firstUser);
-        socialMedia.createComment(0, content); // user 0 comments on their post 
+        chainSphere.createComment(0, content); // user 0 comments on their post 
 
         vm.expectRevert(
-            SocialMedia.SocialMedia__NotCommentOwner.selector
+            ChainSphereVars.ChainSphere__NotCommentOwner.selector
         );
         vm.prank(USER);
-        socialMedia.editComment(0, 0, newContent);
+        chainSphere.editComment(0, 0, newContent);
 
     }
 
     // Test passes
-    function testOwnerCantEditCommentWithoutPaying() public registerThreeUsersAndPost {
-        // Test is expected to revert because a user will try editing their comment without making payment
+    // function testOwnerCantEditCommentWithoutPaying() public registerThreeUsersAndPost {
+    //     // Test is expected to revert because a user will try editing their comment without making payment
 
-        // Get the address of the author of the first post 
-        address firstUser = socialMedia.getPostById(0).author;
-        string memory content = "Praise God";
-        string memory newContent = "For He is good";
+    //     // Get the address of the author of the first post 
+    //     address firstUser = chainSphere.getPostById(0).author;
+    //     string memory content = "Praise God";
+    //     string memory newContent = "For He is good";
 
-        vm.prank(firstUser);
-        socialMedia.createComment(0, content); // user 0 comments on their post 
+    //     vm.prank(firstUser);
+    //     chainSphere.createComment(0, content); // user 0 comments on their post 
 
-        vm.expectRevert(
-            SocialMedia.SocialMedia__PaymentNotEnough.selector
-        );
-        vm.prank(firstUser);
-        socialMedia.editComment(0, 0, newContent);
-    }
+    //     vm.expectRevert(
+    //         ChainSphere.ChainSphere__PaymentNotEnough.selector
+    //     );
+    //     vm.prank(firstUser);
+    //     chainSphere.editComment(0, 0, newContent);
+    // }
 
     // Test passes
-    function testOwnerCanEditCommentAfterPaying() public registerThreeUsersAndPost {
+    function testOwnerCanEditComment() public registerThreeUsersAndPost {
         // Test is expected to pass because a user will pay for editing their post
 
         // Get the address of the author of the first post 
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
         string memory content = "Praise God";
         string memory newContent = "For He is good";
 
         vm.startPrank(firstUser);
-        socialMedia.createComment(0, content); // user 0 comments on their post 
-        socialMedia.editComment{value: EDITING_FEE}(0, 0, newContent);
+        chainSphere.createComment(0, content); // user 0 comments on their post 
+        // chainSphere.editComment{value: EDITING_FEE}(0, 0, newContent);
+        chainSphere.editComment(0, 0, newContent);
         vm.stopPrank();
 
-        string memory retrievedComment = socialMedia.getCommentByPostIdAndCommentId(0,0).content;
+        string memory retrievedComment = chainSphere.getCommentByPostIdAndCommentId(0,0).content;
         assertEq(
             keccak256(abi.encodePacked(retrievedComment)),
             keccak256(abi.encodePacked(newContent))
@@ -784,17 +770,17 @@ contract SocialMediaTest is Test {
         // Test is expected to revert because we will prank a user to try deleting a comment of another user
 
         // Get the address of the author of the first post 
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
         string memory content = "Praise God";
 
         vm.prank(firstUser);
-        socialMedia.createComment(0, content); // user 0 comments on their post 
+        chainSphere.createComment(0, content); // user 0 comments on their post 
 
         vm.expectRevert(
-            SocialMedia.SocialMedia__NotCommentOwner.selector
+            ChainSphereVars.ChainSphere__NotCommentOwner.selector
         );
         vm.prank(USER);
-        socialMedia.deleteComment(0, 0);
+        chainSphere.deleteComment(0, 0);
 
     }
 
@@ -803,17 +789,17 @@ contract SocialMediaTest is Test {
         // Test is expected to revert because a user will try deleting their comment without making payment
 
         // Get the address of the author of the first post 
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
         string memory content = "Praise God";
 
         vm.prank(firstUser);
-        socialMedia.createComment(0, content); // user 0 comments on their post 
+        chainSphere.createComment(0, content); // user 0 comments on their post 
 
         vm.expectRevert(
-            SocialMedia.SocialMedia__PaymentNotEnough.selector
+            ChainSphereVars.ChainSphere__PaymentNotEnough.selector
         );
         vm.prank(firstUser);
-        socialMedia.deleteComment(0, 0);
+        chainSphere.deleteComment(0, 0);
     }
 
     // Test passes
@@ -821,16 +807,16 @@ contract SocialMediaTest is Test {
         // Test is expected to pass because a user will pay for deleting their post
 
         // Get the address of the author of the first post 
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
         string memory content = "Praise God";
 
         vm.startPrank(firstUser);
-        socialMedia.createComment(0, content); // user 0 comments on their post 
-        socialMedia.deleteComment{value: EDITING_FEE}(0, 0);
+        chainSphere.createComment(0, content); // user 0 comments on their post 
+        chainSphere.deleteComment{value: EDITING_FEE}(0, 0);
         vm.stopPrank();
 
-        string memory retrievedComment = socialMedia.getCommentByPostIdAndCommentId(0,0).content; // retrieve comment after deleting to verify that comment is actually deleted
-        address retrievedAddress = socialMedia.getCommentByPostIdAndCommentId(0, 0).author;
+        string memory retrievedComment = chainSphere.getCommentByPostIdAndCommentId(0,0).content; // retrieve comment after deleting to verify that comment is actually deleted
+        address retrievedAddress = chainSphere.getCommentByPostIdAndCommentId(0, 0).author;
 
         // assert that comment is now empty i.e. comment is deleted
         assertEq(
@@ -851,17 +837,17 @@ contract SocialMediaTest is Test {
         // Test is expected to revert because we will prank a user who has not registered to attempt to like a comment of another user
 
         // Get the address of the author of the first post 
-        address firstUser = socialMedia.getPostById(0).author;
+        address firstUser = chainSphere.getPostById(0).author;
         string memory content = "Praise God";
 
         vm.prank(firstUser);
-        socialMedia.createComment(0, content); // user 0 comments on their post 
+        chainSphere.createComment(0, content); // user 0 comments on their post 
 
         vm.expectRevert(
-            SocialMedia.SocialMedia__UserDoesNotExist.selector
+            ChainSphereVars.ChainSphere__UserDoesNotExist.selector
         );
         vm.prank(USER);
-        socialMedia.likeComment(0, 0);
+        chainSphere.likeComment(0, 0);
 
     }
 
@@ -870,18 +856,18 @@ contract SocialMediaTest is Test {
         // Test is expected to pass because a user will pay for deleting their post
 
         // Get the address of the author of the first post 
-        address firstUser = socialMedia.getPostById(0).author;
-        address secondUser = socialMedia.getPostById(1).author;
+        address firstUser = chainSphere.getPostById(0).author;
+        address secondUser = chainSphere.getPostById(1).author;
         string memory content = "Praise God";
 
         vm.prank(firstUser);
-        socialMedia.createComment(0, content); // user 0 comments on their post 
+        chainSphere.createComment(0, content); // user 0 comments on their post 
         vm.prank(secondUser);
-        socialMedia.likeComment(0, 0);
+        chainSphere.likeComment(0, 0);
         vm.stopPrank();
 
-        uint256 retrievedLikes = socialMedia.getCommentByPostIdAndCommentId(0,0).likesCount; // retrieve the number of likes of comment
-        address retrievedAddress = socialMedia.getCommentLikersByPostIdAndCommentId(0, 0)[0];
+        uint256 retrievedLikes = chainSphere.getCommentByPostIdAndCommentId(0,0).likesCount; // retrieve the number of likes of comment
+        address retrievedAddress = chainSphere.getCommentLikersByPostIdAndCommentId(0, 0)[0];
 
         // assert that comment was liked i.e. likes = 1
         assertEq(
@@ -903,16 +889,20 @@ contract SocialMediaTest is Test {
     }
 
     modifier registerTenUsersWhoPostAndCastVotes() {
-        string[10] memory names = [
+        string[10] memory fullNames = [
             "Maritji", "Songrit", "Jane", "Tanaan", "John",
             "Spytex", "Afan", "Nenpan", "Smith", "Rose"
         ];
-        string memory myBio = "I love to code";
+        string[10] memory nickNames = [
+            "Maritji", "Songrit", "Jane", "Tanaan", "John",
+            "Spytex", "Afan", "Nenpan", "Smith", "Rose"
+        ];
+        // string memory myBio = "I love to code";
         string memory myImgHash = "";
         string memory myContent = "Come and See";
         string memory newContent = "Praise God";
         
-        uint256 len = names.length;
+        uint256 len = fullNames.length;
         uint256 i;
         uint256 j;
         
@@ -920,13 +910,13 @@ contract SocialMediaTest is Test {
         for(i = 0; i <len; ){
             // Create a fake user and assign them a starting balance
             
-            address newUser = makeAddr(string(names[i])); 
+            address newUser = makeAddr(string(fullNames[i])); 
             vm.deal(newUser, STARTING_BALANCE);
             vm.startPrank(newUser);
             // register newUser
-            socialMedia.registerUser(names[i], myBio, myImgHash);
+            chainSphere.registerUser(fullNames[i], nickNames[i]);
             // newUser makes a post
-            socialMedia.createPost(myContent, myImgHash);
+            chainSphere.createPost(myContent, myImgHash);
             vm.stopPrank();
 
             userAddresses.push(newUser); // add user to an array of users
@@ -940,12 +930,12 @@ contract SocialMediaTest is Test {
         for(i = 0; i <len; ){
             address currentUser = userAddresses[i];
             vm.startPrank(currentUser);
-            socialMedia.editPost{value: EDITING_FEE}(i, newContent, myImgHash); // edit post
+            chainSphere.editPost(i, newContent, myImgHash); // edit post
             vm.stopPrank();
 
             for(j = ++i; j < len; ){
                 vm.startPrank(currentUser);
-                socialMedia.upvote(j); // cast upvote on another's post
+                chainSphere.upvote(j); // cast upvote on another's post
                 vm.stopPrank();
 
                 unchecked {
@@ -962,29 +952,20 @@ contract SocialMediaTest is Test {
 
     function testCheckUpkeepReturnsFalseIfContractHasNoBalance() public timePassed {
         
-        (bool upkeepNeeded, ) = socialMedia.CheckUpkeep(" ");
+        (bool upkeepNeeded, ) = chainSphere.CheckUpkeep(" ");
         assert(!upkeepNeeded);
     }
 
     function testCheckUpkeepReturnsFalseIfEnoughTimeHasNotPassed() public registerTenUsersWhoPostAndCastVotes {
         
-        (bool upkeepNeeded, ) = socialMedia.CheckUpkeep(" ");
+        (bool upkeepNeeded, ) = chainSphere.CheckUpkeep(" ");
         assert(!upkeepNeeded);
     }
 
     function testCheckUpkeepReturnsTrueWhenParametersAreGood() public registerTenUsersWhoPostAndCastVotes timePassed {
         
-        (bool upkeepNeeded, ) = socialMedia.CheckUpkeep(" ");
-        // vm.prank(socialMedia.getContractOwner());
-        // uint256 balance = socialMedia.getBalance();
-        
-        // uint256 recentPosts = socialMedia.getIdsOfRecentPosts().length;
-        // uint256 eligiblePosts = socialMedia.getIdsOfEligiblePosts().length;
-
-        // console.log(balance);
-        // console.log(recentPosts);
-        // console.log(eligiblePosts);
-        // console.log(upkeepNeeded);
+        vm.deal(address(chainSphere), STARTING_BALANCE); // assign some balance to the contract
+        (bool upkeepNeeded, ) = chainSphere.CheckUpkeep(" ");
         assert(upkeepNeeded);
     }
 
@@ -992,30 +973,31 @@ contract SocialMediaTest is Test {
     ///  performUpkeep  ///
     //////////////////////
     function testPerformUpkeepCanOnlyRunIfCheckUpkeepIsTrue() public registerTenUsersWhoPostAndCastVotes timePassed {
-        
-        socialMedia.performUpkeep(" ");
+        vm.deal(address(chainSphere), STARTING_BALANCE);
+        chainSphere.performUpkeep(" ");
 
     }
 
     function testPerformUpkeepRevertsIfCheckUpkeepIsFalse() public {
-        vm.prank(socialMedia.getContractOwner());
-        uint256 currentBalance = socialMedia.getBalance();
-        uint256 eligiblePosts = socialMedia.getIdsOfEligiblePosts().length;
+        vm.prank(chainSphere.getContractOwner());
+        uint256 currentBalance = chainSphere.getBalance();
+        uint256 eligiblePosts = chainSphere.getIdsOfEligiblePosts().length;
         vm.expectRevert(
             abi.encodeWithSelector(
-                SocialMedia.SocialMedia__UpkeepNotNeeded.selector,
+                ChainSphereVars.ChainSphere__UpkeepNotNeeded.selector,
                 currentBalance,
                 eligiblePosts
             )
         );
-        socialMedia.performUpkeep(" ");
+        chainSphere.performUpkeep(" ");
 
     }
 
     function testPerformUpkeepEmitsRequestId() 
         public registerTenUsersWhoPostAndCastVotes timePassed {
         vm.recordLogs(); // saves all output logs
-        socialMedia.performUpkeep(" "); // emits requestId
+        vm.deal(address(chainSphere), STARTING_BALANCE);
+        chainSphere.performUpkeep(" "); // emits requestId
         Vm.Log[] memory entries = vm.getRecordedLogs();
         bytes32 requestId = entries[0].topics[1];
 
@@ -1033,7 +1015,7 @@ contract SocialMediaTest is Test {
         vm.expectRevert("nonexistent request");
         VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(
             randomRequestId, 
-            address(socialMedia)
+            address(chainSphere)
         );
     }
     
@@ -1043,25 +1025,22 @@ contract SocialMediaTest is Test {
         uint256 WINNING_REWARD = 0.01 ether;
 
         vm.recordLogs(); // saves all output logs
-        socialMedia.performUpkeep(" "); // emits requestId
+        vm.deal(address(chainSphere), STARTING_BALANCE);
+        chainSphere.performUpkeep(" "); // emits requestId
         Vm.Log[] memory entries = vm.getRecordedLogs();
         bytes32 requestId = entries[0].topics[2];
 
         VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(
             uint256(requestId), 
-            address(socialMedia)
+            address(chainSphere)
         );
 
-
-        // assert(socialMedia.getIdsOfEligiblePosts() != address(0));
-        // assert(socialMedia.getLengthOfPlayers() == 0);
-        // assert(previousTimeStamp < socialMedia.getLastTimeStamp());
-        address winnerAddress = socialMedia.getPostById(
-            socialMedia.getRecentWinners()[0]
+        address winnerAddress = chainSphere.getPostById(
+            chainSphere.getIdsOfRecentWinningPosts()[0]
         ).author;
         console.log(winnerAddress.balance);
         console.log(STARTING_BALANCE + WINNING_REWARD - EDITING_FEE);
-        assert(socialMedia.getRecentWinners().length == 1); // Only one winner was picked
+        assert(chainSphere.getIdsOfRecentWinningPosts().length == 1); // Only one winner was picked
         assert(winnerAddress.balance > STARTING_BALANCE);
     }
 
@@ -1072,7 +1051,7 @@ contract SocialMediaTest is Test {
     function testCanGetPriceFromPriceFeedAndReturnValueInUsd() public view skipFork {
         uint256 ethAmount = 0.5 ether;
         uint256 actualValue = 1000e18; // i.e. $1_000 recall the price of 1 ETH in our Anvil chain is $2_000
-        uint256 expectedValue = socialMedia.getUsdValueOfEthAmount(ethAmount);
+        uint256 expectedValue = chainSphere.getUsdValueOfEthAmount(ethAmount);
         assertEq(actualValue, expectedValue);
     }
 
