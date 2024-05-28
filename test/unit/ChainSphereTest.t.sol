@@ -52,7 +52,7 @@ contract ChainSphereTest is Test {
     uint256 interval;
     address vrfCoordinator;
     bytes32 gasLane;
-    uint64 subscriptionId;
+    uint256 subscriptionId;
     uint32 callbackGasLimit;
     address link;
 
@@ -456,6 +456,21 @@ contract ChainSphereTest is Test {
         assertEq(retrievedAddress, address(0));
     }
 
+    // Test passes
+    function testDeletePostRemovesPostFromUserPosts() public registerThreeUsersAndPost {
+        // Test is expected to pass because a user will pay for editing their post
+
+        // Get the address of the author of the first post 
+        address firstUser = chainSphere.getPostById(0).author;
+
+        vm.prank(firstUser);
+        chainSphere.deletePost{value: EDITING_FEE}(0);
+        
+        // string memory retrievedContent = chainSphere.getPostById(0).content;
+        address retrievedAddress = chainSphere.getUserPosts(firstUser)[0].author;
+
+        assertEq(retrievedAddress, address(0));
+    }
     
     // Test passes
     function testContractReceivesPaymentWhenPostIsDeleted() public registerThreeUsersAndPost {
@@ -962,11 +977,28 @@ contract ChainSphereTest is Test {
         assert(!upkeepNeeded);
     }
 
+    // test passes
     function testCheckUpkeepReturnsTrueWhenParametersAreGood() public registerTenUsersWhoPostAndCastVotes timePassed {
         
         vm.deal(address(chainSphere), STARTING_BALANCE); // assign some balance to the contract
         (bool upkeepNeeded, ) = chainSphere.CheckUpkeep(" ");
         assert(upkeepNeeded);
+    }
+
+    // test
+    function testCheckUpkeepUpdatesArrayOfEligiblePosts() public registerTenUsersWhoPostAndCastVotes timePassed {
+        
+        vm.deal(address(chainSphere), STARTING_BALANCE); // assign some balance to the contract
+        uint256 recentPosts = chainSphere.getIdsOfRecentPosts().length;
+        uint256 initialLength = chainSphere.getIdsOfEligiblePosts().length;
+        chainSphere.CheckUpkeep(" "); // call the CheckUpkeep function
+        uint256 finalLength = chainSphere.getIdsOfEligiblePosts().length;
+
+        console.log(recentPosts);
+        console.log(initialLength);
+        console.log(finalLength);
+        assert(finalLength > initialLength);
+        
     }
 
     ///////////////////////
@@ -1058,4 +1090,72 @@ contract ChainSphereTest is Test {
     ///////////////////////////
     //Getter Functions Tests //
     ///////////////////////////
+
+    // test passes
+    function testCanGetUsernameOfRecentWinners() public registerTenUsersWhoPostAndCastVotes timePassed skipFork {
+        uint256 WINNING_REWARD = 0.01 ether;
+
+        vm.recordLogs(); // saves all output logs
+        vm.deal(address(chainSphere), STARTING_BALANCE);
+        chainSphere.performUpkeep(" "); // emits requestId
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestId = entries[0].topics[2];
+
+        VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(
+            uint256(requestId), 
+            address(chainSphere)
+        );
+
+        address winnerAddress = chainSphere.getPostById(
+            chainSphere.getIdsOfRecentWinningPosts()[0]
+        ).author;
+        console.log(winnerAddress.balance);
+        console.log(STARTING_BALANCE + WINNING_REWARD - EDITING_FEE);
+        
+        string[] memory winnerName = chainSphere.getUsernameOfRecentWinners();
+        // console.log("Name of Winner: ", winnerName);
+        assert(
+            keccak256(abi.encode(winnerName)) != keccak256(abi.encode(""))
+        );
+    }
+
+    // test passes
+    function testCanGetRecentWinningPosts() public registerTenUsersWhoPostAndCastVotes timePassed skipFork {
+        // uint256 WINNING_REWARD = 0.01 ether;
+
+        vm.recordLogs(); // saves all output logs
+        vm.deal(address(chainSphere), STARTING_BALANCE);
+        chainSphere.performUpkeep(" "); // emits requestId
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestId = entries[0].topics[2];
+
+        VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(
+            uint256(requestId), 
+            address(chainSphere)
+        );
+        
+        assert(chainSphere.getRecentWinningPosts().length > 0);
+    }
+
+    function testCanGetRecentTrendingPosts() public registerTenUsersWhoPostAndCastVotes timePassed skipFork {
+        // uint256 WINNING_REWARD = 0.01 ether;
+
+        vm.recordLogs(); // saves all output logs
+        vm.deal(address(chainSphere), STARTING_BALANCE);
+        uint256 recentPosts = chainSphere.getIdsOfRecentPosts().length;
+        chainSphere.performUpkeep(" "); // emits requestId
+        uint256 eligiblePosts = chainSphere.getIdsOfEligiblePosts().length;
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestId = entries[0].topics[2];
+
+        VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(
+            uint256(requestId), 
+            address(chainSphere)
+        );
+        
+        console.log(recentPosts);
+        console.log(eligiblePosts);
+        console.log(chainSphere.getIdsOfEligiblePosts().length);
+        assert(chainSphere.getRecentTrendingPosts().length > 0);
+    }
 }

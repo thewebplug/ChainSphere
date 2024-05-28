@@ -85,6 +85,8 @@ contract ChainSphereVars {
     * @param upvotes is the number of upvotes acrued by the post. This indicates how useful other users perceive the post to be. A user cannot vote their own post, a user cannot cast more than one vote on a particular post
     * @param downvotes is the number of downvotes acrued by the post. This indicates how not useful other users perceive the post to be. A user cannot vote their own post, a user cannot cast more than one vote on a particular post
     * @param author is the address of the creator (author) of the post. This is useful to track for issuing of rewards for authors whose posts are adjuged as eligible for rewards.
+    * @param authorNickName is the username (nick name) of the creator (author) of the post.
+    * @param authorFullName is the full name of the creator (author) of the post.
      */
     struct Post {
         uint256 postId;
@@ -94,6 +96,8 @@ contract ChainSphereVars {
         uint256 upvotes;
         uint256 downvotes;
         address author;
+        // string authorNickName;
+        // string authorFullName;
     }
 
     /**
@@ -138,7 +142,7 @@ contract ChainSphereVars {
     uint256 public immutable i_interval; // Period that must pass before a set of posts can be adjudged eligible for reward based on their postScore
     VRFCoordinatorV2Interface public immutable i_vrfCoordinator;
     bytes32 public immutable i_gasLane;
-    uint64 public immutable i_subscriptionId;
+    uint256 public immutable i_subscriptionId;
     uint32 public immutable i_callbackGasLimit;
 
     uint256 public s_lastTimeStamp;
@@ -149,6 +153,8 @@ contract ChainSphereVars {
     mapping(address => User) public s_addressToUserProfile;
     uint256 userId;
     mapping(address => uint256) public s_userAddressToId; // gets userId using address of user
+    // mapping(address => string) public s_userAddressToUsername; // gets username (i.e. nickname) using address of user
+    string[] s_userNamesOfRecentWinners;
 
     /** Variables Relating to Post */
     Post[] s_posts; // array of all posts
@@ -161,7 +167,10 @@ contract ChainSphereVars {
 
     mapping(string => address) public s_usernameToAddress; // get user address using their name
     mapping(address => mapping(uint256 => bool)) public s_hasVoted; //Checks if a user has voted for a post or not
-    mapping(address => Post[]) public userPosts; // gets all posts by a user using the user address
+    mapping(address => Post[]) public s_userPosts; // gets all posts by a user using the user address
+    mapping(uint256 postId => uint256 idInUserPosts) public s_postIdToIdInUserPosts; // mapping postId to the serial number of the post in s_userPosts
+    Post[] s_recentWinningPosts;
+    Post[] s_recentTrendingPosts;
 
     /** Variables Relating to Comment */
 
