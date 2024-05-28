@@ -112,7 +112,7 @@ contract ChainSphere is VRFConsumerBaseV2, CSVars {
         uint256 interval,
         address vrfCoordinator,
         bytes32 gasLane,
-        uint64 subscriptionId,
+        uint256 subscriptionId,
         uint32 callbackGasLimit,
         address link,
         uint256 deployerKey
@@ -160,6 +160,7 @@ contract ChainSphere is VRFConsumerBaseV2, CSVars {
         CSVars.s_userAddressToId[msg.sender] = id;
 
         CSVars.s_usernameToAddress[_username] = msg.sender;
+        // CSVars.s_userAddressToUsername[msg.sender] = _username;
 
         // Add user to list of users
         s_users.push(newUser);
@@ -238,7 +239,10 @@ contract ChainSphere is VRFConsumerBaseV2, CSVars {
 
         string memory nameOfUser = getUserNameFromAddress(msg.sender);
 
-        CSVars.userPosts[msg.sender].push(newPost); // Add the post to CSVars.userPosts
+        // task: create a mapping that links postId to idInUserPosts
+        uint256 idInUserPosts = CSVars.s_userPosts[msg.sender].length;
+        CSVars.s_userPosts[msg.sender].push(newPost); // Add the post to CSVars.s_userPosts
+        CSVars.s_postIdToIdInUserPosts[newPost.postId] = idInUserPosts; // map the postId to idInUserPosts
         CSVars.s_posts.push(newPost); // Add the post to the array of posts
         CSVars.s_idsOfRecentPosts.push(newPost.postId); // Add the postId to the array of ids of recent posts for possible nomination for reward
         CSVars.s_authorToPostId[msg.sender] = postId; // map post to the author
@@ -277,9 +281,24 @@ contract ChainSphere is VRFConsumerBaseV2, CSVars {
         onlyPostOwner(_postId)
         hasPaid
     {
-        // delete the content of post by
-        CSVars.s_posts[_postId].content = "";
-        CSVars.s_posts[_postId].author = address(0);
+        address currentUser  = CSVars.s_posts[_postId].author;
+        // reset the post
+        CSVars.s_posts[_postId] = Post({
+            postId: _postId,
+            content: "",
+            imgHash: "",
+            timestamp: 0,
+            upvotes: 0,
+            downvotes: 0,
+            author: address(0)
+        });
+        // reset previous mappings
+        CSVars.s_postIdToAuthor[_postId] = address(0); // undo the initial mapping
+        CSVars.s_authorToPostId[address(0)] = _postId; // undo the initial mapping
+        uint256 idOfPostInArray = CSVars.s_postIdToIdInUserPosts[_postId];
+        CSVars.s_userPosts[currentUser][idOfPostInArray].author = address(0); // reset author address to address 0
+        CSVars.s_userPosts[currentUser][idOfPostInArray].content = ""; // reset content to empty string
+        // ? How do we remove post from CSVars.s_userPosts array?
     }
 
     /**
@@ -431,24 +450,29 @@ contract ChainSphere is VRFConsumerBaseV2, CSVars {
     /**
      * @dev This function is to be called automatically using Chainlink Automation every VALIDITY_PERIOD (i.e. 30 days or as desirable). The function loops through an array of recentPosts and checks if posts are eligible for rewards and add the corresponding authors to an array of eligible authors for reward
      */
-    function _pickIdsOfEligiblePosts() internal {
-        uint256 len = CSVars.s_idsOfRecentPosts.length; // number of recent posts
-        uint256 i; // define the counter variable
+    function _pickIdsOfEligiblePosts(uint256[] memory _idsOfRecentPosts) internal {
+        // uint256 len = CSVars.s_idsOfRecentPosts.length; // number of recent posts
+
+        uint256 len = _idsOfRecentPosts.length; // number of recent posts
 
         /** Loop through the array and pick posts that are eligible for reward */
-        for (i; i < len; ) {
-            // Check if author is eligible for rewards and add their address to the array of eligible users
+        for (uint256 i; i < len; ) {
+            // Check if post is eligible for rewards and add the postId to the array of eligible posts
 
-            if (_isPostEligibleForReward(CSVars.s_idsOfRecentPosts[i])) {
-                CSVars.s_idsOfEligiblePosts.push(CSVars.s_idsOfRecentPosts[i]);
+            // if (_isPostEligibleForReward(CSVars.s_idsOfRecentPosts[i])) {
+            //     CSVars.s_idsOfEligiblePosts.push(CSVars.s_idsOfRecentPosts[i]);
+            // }
+
+            if (_isPostEligibleForReward(_idsOfRecentPosts[i])) {
+                CSVars.s_idsOfEligiblePosts.push(_idsOfRecentPosts[i]);
             }
+
 
             unchecked {
                 i++;
             }
         }
 
-        // return CSVars.s_idsOfEligiblePosts;
     }
 
     /////////////////////////
@@ -481,7 +505,7 @@ contract ChainSphere is VRFConsumerBaseV2, CSVars {
         )
     {
         // call the _pickEligibleAuthors function to determine authors that are eligible for reward
-        _pickIdsOfEligiblePosts(); // this updates the CSVars.s_idsOfEligiblePosts array
+        _pickIdsOfEligiblePosts(CSVars.s_idsOfRecentPosts); // this updates the CSVars.s_idsOfEligiblePosts array
 
         bool timeHasPassed = (block.timestamp - CSVars.s_lastTimeStamp) >= CSVars.i_interval; // checks if enough time has passed
         bool hasBalance = address(this).balance > 0; // Contract has ETH
@@ -632,7 +656,7 @@ contract ChainSphere is VRFConsumerBaseV2, CSVars {
         returns (Post[] memory)
     {
         // Implementation to retrieve all posts by a user
-        return CSVars.userPosts[_userAddress];
+        return CSVars.s_userPosts[_userAddress];
     }
 
     /**
@@ -719,11 +743,74 @@ contract ChainSphere is VRFConsumerBaseV2, CSVars {
     function getAddressFromUsername(string memory _username) public view returns(address) {
         return CSVars.s_usernameToAddress[_username];
     }
+    
     /**
     * @dev This function retrieves all post on the blockchain
      */
     function getAllPosts() public view returns (Post[] memory) {
         return CSVars.s_posts;
+    }
+
+    /**
+    * @dev This function retrieves the username of recent winners on the platform
+     */
+    function getUsernameOfRecentWinners() public returns(string[] memory) {
+        // string[] storage userNamesOfRecentWinners;
+        uint256 len = CSVars.s_idsOfRecentWinningPosts.length;
+        for(uint256 i; i < len; ){
+            CSVars.s_userNamesOfRecentWinners.push(
+                getUserNameFromAddress(
+                    getPostById(
+                        CSVars.s_idsOfRecentWinningPosts[i]
+                    ).author
+                )
+            );
+            unchecked {
+                i++;
+            }
+        }
+
+        return CSVars.s_userNamesOfRecentWinners;
+    }
+
+    /**
+    * @dev This function retrieves all recent winning posts on the platform
+     */
+    function getRecentWinningPosts() public returns(Post[] memory) {
+        // Post[] storage recentWinningPosts;
+        uint256 len = CSVars.s_idsOfRecentWinningPosts.length;
+        for(uint256 i; i < len; ){
+            CSVars.s_recentWinningPosts.push(
+                getPostById(
+                    CSVars.s_idsOfRecentWinningPosts[i]
+                )
+            );
+            unchecked {
+                i++;
+            }
+        }
+
+        return CSVars.s_recentWinningPosts;
+    }
+
+    /**
+    * @dev This function retrieves all recent trending posts on the platform. These are posts that have at least the minimum post score
+     */
+    function getRecentTrendingPosts() public returns(Post[] memory) {
+        // Post[] storage recentWinningPosts;
+        uint256 len = CSVars.s_idsOfEligiblePosts.length;
+        for(uint256 i; i < len; ){
+            CSVars.s_recentTrendingPosts.push(
+                getPostById(
+                    CSVars.s_idsOfEligiblePosts[i]
+                )
+            );
+            unchecked {
+                i++;
+            }
+        }
+
+        return CSVars.s_recentTrendingPosts;
     }
 
     // Owner functions
