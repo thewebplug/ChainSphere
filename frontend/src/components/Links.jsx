@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 
 export default function Links() {
   const auth = useSelector((state) => state.auth);
+  console.log('auth', auth);
 
     const navigate = useNavigate();
 
@@ -19,8 +20,8 @@ export default function Links() {
         alt=""
       />
       <div className="links__inner__profile-group__name">
-        <div>Saleem Jibril</div>
-        <div>@{auth?.userInfo?.name}</div>
+        <div>{auth?.userInfo?.name}</div>
+        <div>@{auth?.userInfo?.username}</div>
       </div>
     </div>
 

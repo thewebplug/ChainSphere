@@ -3,10 +3,14 @@ import Image1 from "../assets/Rectangle 41.png";
 import { useRef } from "react";
 import { contractABI, contractAddress } from '../contractDetails';
 import Web3 from "web3";
+// import { uploadImageToPinata } from './UploadToPinata'; // Adjust the path as necessary
+import axios from 'axios';
+// import fs from 'fs';
 
 import {useNavigate, useLocation} from 'react-router-dom';
 
-export default function Sidebar() {
+export default function Sidebar({ getUsersPosts }) {
+  const JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJlZTI4ZjFjNi05YzVkLTQ2OTUtOTA5ZC1kMDVkYTE1MTZhNTMiLCJlbWFpbCI6InNhbGVlbWppYnJpbDVAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInBpbl9wb2xpY3kiOnsicmVnaW9ucyI6W3siaWQiOiJGUkExIiwiZGVzaXJlZFJlcGxpY2F0aW9uQ291bnQiOjF9LHsiaWQiOiJOWUMxIiwiZGVzaXJlZFJlcGxpY2F0aW9uQ291bnQiOjF9XSwidmVyc2lvbiI6MX0sIm1mYV9lbmFibGVkIjpmYWxzZSwic3RhdHVzIjoiQUNUSVZFIn0sImF1dGhlbnRpY2F0aW9uVHlwZSI6InNjb3BlZEtleSIsInNjb3BlZEtleUtleSI6IjhmYTZmMmU5NTNkNjk5OTIyMjIyIiwic2NvcGVkS2V5U2VjcmV0IjoiMWRkMzViMzcwZDQ4NGVkY2E2MDNlZGY0OTZhMTg2NGRhODNlYjk5MTIxNDQwMmZlNWFmZmI3OTQ5NjY2NWY0NyIsImlhdCI6MTcxNjk3NTQ3OX0.O81OxR4z2tEuWUK3xIbnDT4Zm2PjYKtJckyWKUsPjJc"
     const [modalOpen, setModalOpen] = useState(false);
     const mediaRef = useRef(null);
     const [account, setAccount] = useState('');
@@ -41,8 +45,42 @@ export default function Sidebar() {
         }
       }, []);
 
+      const pinFileToIPFS = async (file) => {
+        if (file) {
+          const formData = new FormData();
+          formData.append('file', file);
+
+          console.log('deyyah!');
+      
+          const pinataMetadata = JSON.stringify({
+            name: file.name,
+          });
+          formData.append('pinataMetadata', pinataMetadata);
+      
+          const pinataOptions = JSON.stringify({
+            cidVersion: 0,
+          });
+          formData.append('pinataOptions', pinataOptions);
+      
+          try {
+            const res = await axios.post("https://api.pinata.cloud/pinning/pinFileToIPFS", formData, {
+              maxBodyLength: "Infinity",
+              headers: {
+                'Content-Type': `multipart/form-data; boundary=${formData._boundary}`,
+                'Authorization': `Bearer ${JWT}`
+              }
+            });
+            return res.data;
+          } catch (error) {
+            console.log(error);
+          }
+        }
+    }
+
+      
+
       // const uploadImageToPinata = async (file) => {
-      //   const url = https://api.pinata.cloud/pinning/pinFileToIPFS;
+      //   const url = "https://api.pinata.cloud/pinning/pinFileToIPFS"
       //   let data = new FormData();
       //   data.append('file', file);
     
@@ -55,6 +93,8 @@ export default function Sidebar() {
       //   });
       //   return response.data.IpfsHash;
       // };
+
+      
 
       
   const createPost = async (e) => {
@@ -70,12 +110,13 @@ export default function Sidebar() {
     // }
 
     try {
-      // Upload image to Pinata
-      // const imgHash = await uploadImageToPinata(image);
-
+      console.log('image', image);
+      const imgHash = await pinFileToIPFS(image);
+console.log('pinata!', imgHash);
       // Create post on blockchain
-      await contract.methods.createPost(content, "imgHash").send({ from: account });
-      setModalOpen(false)
+      await contract.methods.createPost(content, imgHash?.IpfsHash).send({ from: account });
+      getUsersPosts();
+      setModalOpen(false);
       setContent('');
       setImage(null);
     } catch (error) {
@@ -236,7 +277,7 @@ export default function Sidebar() {
                     />
                   </svg>
                  <img
-                      src={Image1}
+                      src={URL.createObjectURL(image)}
                       alt=""
                       className=""
                     />
@@ -252,7 +293,7 @@ export default function Sidebar() {
                         ref={mediaRef}
                         accept="image/*"
 
-                        onChange={(e) => setImage(e.target.value)}
+                        onChange={e => setImage(e.target.files[0])}
                       />
                       {!image && <svg
                         width="20"
