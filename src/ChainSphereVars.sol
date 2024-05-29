@@ -53,6 +53,7 @@ contract ChainSphereVars {
     error ChainSphere__TransferFailed();
     error ChainSphere__BatchTransferFailed(address winner);
     error ChainSphere__NotProfileOwner();
+    error ChainSphere__PostDoesNotExist();
 
     ///////////////////////////////////
     /// Type Declarations (Structs) ///
@@ -96,8 +97,6 @@ contract ChainSphereVars {
         uint256 upvotes;
         uint256 downvotes;
         address author;
-        // string authorNickName;
-        // string authorFullName;
     }
 
     /**
@@ -159,7 +158,7 @@ contract ChainSphereVars {
     /** Variables Relating to Post */
     Post[] s_posts; // array of all posts
     uint256[] s_idsOfRecentPosts; // array of posts that are not more than VALIDITY_PERIOD old. This array is reset anytime authors have been picked for reward.
-    Post[] s_postsEligibleForReward; // an array of eligible posts for display in the trending section on the frontend
+    // Post[] s_postsEligibleForReward; // an array of eligible posts for display in the trending section on the frontend
     mapping(uint256 => Post) public s_idToPost; // get full details of a post using the postId
 
     mapping(address => uint256) public s_authorToPostId; // Get postId using address of the author

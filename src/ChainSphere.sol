@@ -104,6 +104,13 @@ contract ChainSphere is VRFConsumerBaseV2, CSVars {
         _;
     }
 
+    modifier postExists(uint256 _postId) {
+        if(getPostById(_postId).author == address(0)){
+            revert ChainSphere__PostDoesNotExist();
+        }
+        _;
+    }
+
     ///////////////////
     /// Constructor ///
     ///////////////////
@@ -202,15 +209,15 @@ contract ChainSphere is VRFConsumerBaseV2, CSVars {
     ) public checkUserExists(msg.sender) onlyProfileOwner(_userId) {
 
         if(keccak256(abi.encode(_bio)) != keccak256(abi.encode(""))){
-            s_users[_userId].bio = _bio; // bio is only updated if supplied by user
+            CSVars.s_users[_userId].bio = _bio; // bio is only updated if supplied by user
         }
 
         if(keccak256(abi.encode(_profileImageHash)) != keccak256(abi.encode(""))){
-            s_users[_userId].profileImageHash = _profileImageHash; // profileImageHash is only updated if supplied by user
+            CSVars.s_users[_userId].profileImageHash = _profileImageHash; // profileImageHash is only updated if supplied by user
         }
         
         if(keccak256(abi.encode(_profileImageHash)) != keccak256(abi.encode(""))){
-            s_users[_userId].fullNameOfUser = _newName; // fullNameOfUser is only updated if supplied by user
+            CSVars.s_users[_userId].fullNameOfUser = _newName; // fullNameOfUser is only updated if supplied by user
         }
     }
 
@@ -350,13 +357,13 @@ contract ChainSphere is VRFConsumerBaseV2, CSVars {
      */
     function createComment(uint256 _postId, string memory _content)
         public
-        checkUserExists(msg.sender)
+        checkUserExists(msg.sender) postExists(_postId)
     {
         
-        uint256 commentId = CSVars.s_postIdToComments[_postId].length;
+        uint256 _commentId = CSVars.s_postIdToComments[_postId].length;
 
         Comment memory newComment = Comment({
-            commentId: commentId,
+            commentId: _commentId,
             author: msg.sender,
             postId: _postId,
             content: _content,
@@ -367,10 +374,10 @@ contract ChainSphere is VRFConsumerBaseV2, CSVars {
         string memory postAuthor = getUserById(_postId).nickName;
         string memory commenter = getUserNameFromAddress(msg.sender);
 
-        CSVars.s_postAndCommentIdToAddress[_postId][commentId] = msg.sender;
+        CSVars.s_postAndCommentIdToAddress[_postId][_commentId] = msg.sender;
         CSVars.s_postIdToComments[_postId].push(newComment);
 
-        emit CommentCreated(commentId, postAuthor, commenter, _postId);
+        emit CommentCreated(_commentId, postAuthor, commenter, _postId);
     }
 
     /**
@@ -504,6 +511,9 @@ contract ChainSphere is VRFConsumerBaseV2, CSVars {
             bytes memory /* performData */
         )
     {
+        // reset the CSVars.s_idsOfEligiblePosts array
+        CSVars.s_idsOfEligiblePosts = new uint256[](0);
+
         // call the _pickEligibleAuthors function to determine authors that are eligible for reward
         _pickIdsOfEligiblePosts(CSVars.s_idsOfRecentPosts); // this updates the CSVars.s_idsOfEligiblePosts array
 

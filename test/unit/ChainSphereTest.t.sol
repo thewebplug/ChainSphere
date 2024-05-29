@@ -167,6 +167,33 @@ contract ChainSphereTest is Test {
         chainSphere.registerUser(myName, myNickName);
     }
 
+    function testUserCanEditTheirProfile() public registerOneUser {
+        string memory myBio = "Cyfin Updraft Fellow";
+        string memory myNickName = "Spo";
+        string memory expectedBio;
+        string memory expectedNickName;
+        
+        // update user profile
+        vm.prank(chainSphere.getUserById(0).userAddress);
+        chainSphere.editUserProfile(0, myBio, "", "");
+        // get name of user from the Blockchain
+        expectedNickName = chainSphere.getUserById(0).nickName;
+        console.log("Registered User Name: %s", expectedNickName);
+
+        expectedBio = chainSphere.getUserById(0).bio;
+        console.log("Registered User Bio: %s", expectedBio);
+
+        assertEq(
+            keccak256(abi.encodePacked(myNickName)), 
+            keccak256(abi.encodePacked(expectedNickName))
+        );
+
+        assertEq(
+            keccak256(abi.encodePacked(myBio)), 
+            keccak256(abi.encodePacked(expectedBio))
+        );
+    }
+
     //////////////////////////////
     // Change of Username Tests //
     //////////////////////////////
@@ -679,18 +706,62 @@ contract ChainSphereTest is Test {
     // Test Passes as expected
     function testRegisteredUserCanCreateComment() public registerThreeUsersAndPost{
         address firstUser = chainSphere.getPostById(0).author;
-        string memory content = "Praise God";
+        address secondUser = chainSphere.getPostById(1).author;
+        string memory content1 = "Praise God";
+        string memory content2 = "God's Amazing Grace";
 
-        vm.prank(firstUser);
-        chainSphere.createComment(0, content);
+        vm.startPrank(firstUser);
+        chainSphere.createComment(0, content1);
+        chainSphere.createComment(0, content1);
+        chainSphere.createComment(0, content1);
+        chainSphere.createComment(1, content1);
+        chainSphere.createComment(1, content1);
+        chainSphere.createComment(1, content1);
+        chainSphere.createComment(2, content1);
+        chainSphere.createComment(2, content1);
+        chainSphere.createComment(2, content1);
+        vm.stopPrank();
+
+        vm.startPrank(secondUser);
+        chainSphere.createComment(0, content2);
+        chainSphere.createComment(0, content2);
+        chainSphere.createComment(0, content2);
+        chainSphere.createComment(1, content2);
+        chainSphere.createComment(1, content2);
+        chainSphere.createComment(1, content2);
+        chainSphere.createComment(2, content2);
+        chainSphere.createComment(2, content2);
+        chainSphere.createComment(2, content2);
+        vm.stopPrank();
 
         // retrieve comment from the blockchain
-        string memory expectedContent = chainSphere.getCommentByPostIdAndCommentId(0,0).content;
-        console.log(expectedContent);
+        string memory expectedContent00 = chainSphere.getCommentByPostIdAndCommentId(0,0).content; // the first comment on the first post
+        string memory expectedContent10 = chainSphere.getCommentByPostIdAndCommentId(1,0).content; // the first comment on the second post
+        string memory expectedContent04 = chainSphere.getCommentByPostIdAndCommentId(0,4).content; // the fifth comment on the first post
+        string memory expectedContent15 = chainSphere.getCommentByPostIdAndCommentId(1,5).content; // the sixth comment on the second post
+        console.log(expectedContent00);
+        console.log(expectedContent10);
+        console.log(expectedContent04);
+        console.log(expectedContent15);
     
         assertEq(
-            keccak256(abi.encodePacked(expectedContent)),
-            keccak256(abi.encodePacked(content))
+            keccak256(abi.encodePacked(expectedContent00)),
+            keccak256(abi.encodePacked(content1))
+        );
+
+        assertEq(
+            keccak256(abi.encodePacked(expectedContent10)),
+            keccak256(abi.encodePacked(content1))
+        );
+
+        assertEq(
+            keccak256(abi.encodePacked(expectedContent04)),
+            keccak256(abi.encodePacked(content2))
+        );
+
+        assertEq(
+            keccak256(abi.encodePacked(expectedContent15)),
+            keccak256(abi.encodePacked(content2))
         );
     }
 
