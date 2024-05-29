@@ -13,7 +13,7 @@ contract HelperConfig is Script {
         uint256 interval;
         address vrfCoordinator;
         bytes32 gasLane;
-        uint64 subscriptionId;
+        uint256 subscriptionId;
         uint32 callbackGasLimit;
         address link;
         uint256 deployerKey;
@@ -34,8 +34,8 @@ contract HelperConfig is Script {
     constructor(){
         if(block.chainid == 11155111){
             activeNetworkConfig = getSepoliaEthConfig();
-        } else if(block.chainid == 2442){
-            activeNetworkConfig = getPolygonzkEvmConfig();
+        } else if(block.chainid == 80002){
+            activeNetworkConfig = getPolygonAmoyConfig();
         } else{
             activeNetworkConfig = getOrCreateAnvilEthConfig();
         }
@@ -54,15 +54,15 @@ contract HelperConfig is Script {
         });
     }
 
-    function getPolygonzkEvmConfig() public view returns(NetworkConfig memory){
+    function getPolygonAmoyConfig() public view returns(NetworkConfig memory){
         return NetworkConfig({
-            priceFeed: 0xd94522a6feF7779f672f4C88eb672da9222f2eAc, // ETH/USD
+            priceFeed: 0xF0d50568e3A7e8259E16663972b11910F89BD8e7, // ETH/USD
             interval: 30,
-            vrfCoordinator: 0xAE975071Be8F8eE67addBC1A82488F1C24858067,//from Chainlink 0x343300b5d84D444B2ADc9116FEF1bED02BE49Cf2
+            vrfCoordinator: 0x343300b5d84D444B2ADc9116FEF1bED02BE49Cf2,//from Chainlink 0x343300b5d84D444B2ADc9116FEF1bED02BE49Cf2
             gasLane: 0x816bedba8a50b294e5cbd47842baf240c2385f2eaf719edbd4f250a137a8c899, // the key hash from Chainlink
-            subscriptionId: 10914,
-            callbackGasLimit: 500_000, // 500,000 gas!
-            link: 0x5576815a38A3706f37bf815b261cCc7cCA77e975, // 0x0fd9e8d3af1aaee056eb9e802c3a762a667b1904
+            subscriptionId: 6963410906148681671330769598823940006759907003658603586642213936043556887061,
+            callbackGasLimit: 2_500_000, // 2,500,000 gas!
+            link: 0x0Fd9e8d3aF1aaee056EB9e802c3A762a667b1904, // 0x0fd9e8d3af1aaee056eb9e802c3a762a667b1904
             deployerKey: vm.envUint("PRIVATE_KEY")
         });
     }
@@ -105,3 +105,8 @@ contract HelperConfig is Script {
         });
     }
 }
+
+
+// 0x0fd9e8d3af1aaee056eb9e802c3a762a667b1904
+// 0x0Fd9e8d3aF1aaee056EB9e802c3A762a667b1904
+// 0x343300b5d84D444B2ADc9116FEF1bED02BE49Cf2
