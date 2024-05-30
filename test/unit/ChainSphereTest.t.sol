@@ -4,11 +4,14 @@ pragma solidity ^0.8.18;
 
 import { Test, console} from "forge-std/Test.sol";
 import { ChainSphere } from "../../src/ChainSphere.sol";
-import { ChainSphereVars } from "../../src/ChainSphereVars.sol";
+// import { ChainSphereVars } from "../../src/sol";
 import { DeployChainSphere } from "../../script/DeployChainSphere.s.sol";
 import { HelperConfig } from "../../script/HelperConfig.s.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { VRFCoordinatorV2Mock } from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
+import { ChainSphereUserProfile as CSUserProfile}  from "../../src/ChainSphereUserProfile.sol";
+import { ChainSpherePosts as CSPosts}  from "../../src/ChainSpherePosts.sol";
+import { ChainSphereComments as CSComments}  from "../../src/ChainSphereComments.sol";
 
 
 contract ChainSphereTest is Test {
@@ -72,7 +75,7 @@ contract ChainSphereTest is Test {
     Comment comment;
 
     // Events
-    event UserRegistered(uint256 indexed id, address indexed userAddress, string indexed name);
+    event UserRegistered(uint256 indexed id, address indexed userAddress, string name);
     event PostCreated(uint256 postId, string authorName);
     event PostEdited(uint256 postId, string authorName);
     event Upvoted(uint256 postId, string posthAuthorName, string upvoterName);
@@ -151,7 +154,7 @@ contract ChainSphereTest is Test {
         
         // The test is expected to revert with `chainSphere__UsernameAlreadyTaken` message since the username is registered already
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__UsernameAlreadyTaken.selector
+            CSUserProfile.ChainSphere__UsernameAlreadyTaken.selector
         );
         vm.prank(USER);
         chainSphere.registerUser(myName, myNickName);
@@ -162,9 +165,37 @@ contract ChainSphereTest is Test {
         string memory myNickName = "Spo";
         
         vm.expectEmit(true, false, false, false, address(chainSphere));
-        emit UserRegistered(0, USER, myName);
+        // emit UserRegistered(0, USER, myName);
+        emit UserRegistered(0, USER, myNickName);
         vm.prank(USER);
         chainSphere.registerUser(myName, myNickName);
+    }
+
+    function testUserCanEditTheirProfile() public registerOneUser {
+        string memory myBio = "Cyfin Updraft Fellow";
+        string memory myNickName = "Spo";
+        string memory expectedBio;
+        string memory expectedNickName;
+        
+        // update user profile
+        vm.prank(chainSphere.getUserById(0).userAddress);
+        chainSphere.editUserProfile(0, myBio, "", "");
+        // get name of user from the Blockchain
+        expectedNickName = chainSphere.getUserById(0).nickName;
+        console.log("Registered User Name: %s", expectedNickName);
+
+        expectedBio = chainSphere.getUserById(0).bio;
+        console.log("Registered User Bio: %s", expectedBio);
+
+        assertEq(
+            keccak256(abi.encodePacked(myNickName)), 
+            keccak256(abi.encodePacked(expectedNickName))
+        );
+
+        assertEq(
+            keccak256(abi.encodePacked(myBio)), 
+            keccak256(abi.encodePacked(expectedBio))
+        );
     }
 
     //////////////////////////////
@@ -197,7 +228,7 @@ contract ChainSphereTest is Test {
 
         // Test is expected to revert since user does not exist on the blockchain
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__UserDoesNotExist.selector
+            CSUserProfile.ChainSphere__UserDoesNotExist.selector
         );
         vm.prank(RAN_USER);
         chainSphere.changeUsername(USER_ZERO, newName);
@@ -211,7 +242,7 @@ contract ChainSphereTest is Test {
 
         // Test is expected to revert since the new username already exists on the blockchain
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__UsernameAlreadyTaken.selector
+            CSUserProfile.ChainSphere__UsernameAlreadyTaken.selector
         );
         vm.prank(RAN_USER);
         chainSphere.changeUsername(USER_ZERO, newName);
@@ -226,7 +257,7 @@ contract ChainSphereTest is Test {
 
         // Test is expected to revert since the nuser is not the profile owner
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__NotProfileOwner.selector
+            CSUserProfile.ChainSphere__NotProfileOwner.selector
         );
         vm.prank(RAN_USER);
         chainSphere.changeUsername(USER_ZERO, newName);
@@ -240,12 +271,15 @@ contract ChainSphereTest is Test {
         string memory newName = "Pauline"; // Note that this name does not exist on the Blockchain
         string memory expectedName;
 
+        // console.log("Initial User name: ", chainSphere.getUserById(0).nickName);
+        // console.log(chainSphere.getUser(RAN_USER));
+        chainSphere.getUser(RAN_USER);
         // Test is expected to pass
         vm.prank(RAN_USER);
         chainSphere.changeUsername(USER_ZERO, newName);
 
         // get name of user from the Blockchain
-        expectedName = chainSphere.getUserById(USER_ZERO).nickName;
+        expectedName = chainSphere.getUserById(0).nickName;
         console.log("User Name: %s", expectedName);
 
         assertEq(
@@ -266,7 +300,7 @@ contract ChainSphereTest is Test {
 
         // Note that USER has not registered and as such, we expect test to revert
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__UserDoesNotExist.selector
+            CSUserProfile.ChainSphere__UserDoesNotExist.selector
         );
         vm.prank(USER);
         chainSphere.createPost(content, imgHash);
@@ -343,7 +377,7 @@ contract ChainSphereTest is Test {
         string memory imgHash = "";
 
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__NotPostOwner.selector
+            CSPosts.ChainSphere__NotPostOwner.selector
         );
         vm.prank(firstUser);
         chainSphere.editPost(1, newContent, imgHash);
@@ -414,7 +448,7 @@ contract ChainSphereTest is Test {
         address firstUser = chainSphere.getPostById(0).author;
 
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__NotPostOwner.selector
+            CSPosts.ChainSphere__NotPostOwner.selector
         );
         vm.prank(firstUser);
         chainSphere.deletePost(1);
@@ -429,7 +463,7 @@ contract ChainSphereTest is Test {
         address firstUser = chainSphere.getPostById(0).author;
 
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__PaymentNotEnough.selector
+            CSPosts.ChainSphere__PaymentNotEnough.selector
         );
         vm.prank(firstUser);
         chainSphere.deletePost(0);
@@ -494,7 +528,7 @@ contract ChainSphereTest is Test {
         address firstUser = chainSphere.getPostById(0).author;
 
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__OwnerCannotVote.selector
+            CSPosts.ChainSphere__OwnerCannotVote.selector
         );
         vm.prank(firstUser);
         chainSphere.upvote(0);
@@ -517,7 +551,7 @@ contract ChainSphereTest is Test {
         vm.prank(firstUser);
         chainSphere.upvote(1); //cast upvote first time
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__AlreadyVoted.selector
+            CSPosts.ChainSphere__AlreadyVoted.selector
         );
         vm.prank(firstUser);
         chainSphere.upvote(1); // cast upvote for the second time on the same post
@@ -565,7 +599,7 @@ contract ChainSphereTest is Test {
         address firstUser = chainSphere.getPostById(0).author;
 
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__OwnerCannotVote.selector
+            CSPosts.ChainSphere__OwnerCannotVote.selector
         );
         vm.prank(firstUser);
         chainSphere.downvote(0);
@@ -589,7 +623,7 @@ contract ChainSphereTest is Test {
         vm.prank(firstUser);
         chainSphere.downvote(1); //cast downvote first time
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__AlreadyVoted.selector
+            CSPosts.ChainSphere__AlreadyVoted.selector
         );
         vm.prank(firstUser);
         chainSphere.downvote(1); // cast downvote for the second time on the same post
@@ -640,7 +674,7 @@ contract ChainSphereTest is Test {
         vm.prank(firstUser);
         chainSphere.upvote(1); // user 0 gives an upvote to post of user 1
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__AlreadyVoted.selector
+            CSPosts.ChainSphere__AlreadyVoted.selector
         );
         vm.prank(firstUser);
         chainSphere.downvote(1); // user 0 gives a downvote to post of user 1
@@ -654,7 +688,7 @@ contract ChainSphereTest is Test {
         vm.prank(firstUser);
         chainSphere.downvote(1); // user 0 gives an downvote to post of user 1
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__AlreadyVoted.selector
+            CSPosts.ChainSphere__AlreadyVoted.selector
         );
         vm.prank(firstUser);
         chainSphere.upvote(1); // user 0 gives a upvote to post of user 1
@@ -670,7 +704,7 @@ contract ChainSphereTest is Test {
 
         // Note that USER has not registered and as such, we expect test to revert
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__UserDoesNotExist.selector
+            CSUserProfile.ChainSphere__UserDoesNotExist.selector
         );
         vm.prank(USER);
         chainSphere.createComment(0, content);
@@ -679,18 +713,62 @@ contract ChainSphereTest is Test {
     // Test Passes as expected
     function testRegisteredUserCanCreateComment() public registerThreeUsersAndPost{
         address firstUser = chainSphere.getPostById(0).author;
-        string memory content = "Praise God";
+        address secondUser = chainSphere.getPostById(1).author;
+        string memory content1 = "Praise God";
+        string memory content2 = "God's Amazing Grace";
 
-        vm.prank(firstUser);
-        chainSphere.createComment(0, content);
+        vm.startPrank(firstUser);
+        chainSphere.createComment(0, content1); // comment 0 on post 0
+        chainSphere.createComment(0, content1); // comment 1 on post 0
+        chainSphere.createComment(0, content1); // comment 2 on post 0
+        chainSphere.createComment(1, content1); // comment 3 on post 1
+        chainSphere.createComment(1, content1); // comment 4 on post 1
+        chainSphere.createComment(1, content1); // comment 5 on post 1
+        chainSphere.createComment(2, content1); // comment 6 on post 2
+        chainSphere.createComment(2, content1); // comment 7 on post 2
+        chainSphere.createComment(2, content1); // comment 8 on post 2
+        vm.stopPrank();
+
+        vm.startPrank(secondUser);
+        chainSphere.createComment(0, content2); // comment 9 on post 0
+        chainSphere.createComment(0, content2); // comment 10 on post 0
+        chainSphere.createComment(0, content2); // comment 11 on post 0
+        chainSphere.createComment(1, content2); // comment 12 on post 1
+        chainSphere.createComment(1, content2); // comment 13 on post 1
+        chainSphere.createComment(1, content2); // comment 14 on post 1
+        chainSphere.createComment(2, content2); // comment 15 on post 2
+        chainSphere.createComment(2, content2); // comment 16 on post 2
+        chainSphere.createComment(2, content2); // comment 17 on post 2
+        vm.stopPrank();
 
         // retrieve comment from the blockchain
-        string memory expectedContent = chainSphere.getCommentByPostIdAndCommentId(0,0).content;
-        console.log(expectedContent);
+        string memory expectedContent0 = chainSphere.getCommentByCommentId(0).content; // the first comment on the first post
+        string memory expectedContent5 = chainSphere.getCommentByCommentId(5).content; // the first comment on the second post
+        string memory expectedContent10 = chainSphere.getCommentByCommentId(10).content; // the fifth comment on the first post
+        string memory expectedContent16 = chainSphere.getCommentByCommentId(16).content; // the sixth comment on the second post
+        console.log(expectedContent0);
+        console.log(expectedContent5);
+        console.log(expectedContent10);
+        console.log(expectedContent16);
     
         assertEq(
-            keccak256(abi.encodePacked(expectedContent)),
-            keccak256(abi.encodePacked(content))
+            keccak256(abi.encodePacked(expectedContent0)),
+            keccak256(abi.encodePacked(content1))
+        );
+
+        assertEq(
+            keccak256(abi.encodePacked(expectedContent5)),
+            keccak256(abi.encodePacked(content1))
+        );
+
+        assertEq(
+            keccak256(abi.encodePacked(expectedContent10)),
+            keccak256(abi.encodePacked(content2))
+        );
+
+        assertEq(
+            keccak256(abi.encodePacked(expectedContent16)),
+            keccak256(abi.encodePacked(content2))
         );
     }
 
@@ -726,32 +804,14 @@ contract ChainSphereTest is Test {
         chainSphere.createComment(0, content); // user 0 comments on their post 
 
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__NotCommentOwner.selector
+            CSComments.ChainSphere__NotCommentOwner.selector
         );
         vm.prank(USER);
-        chainSphere.editComment(0, 0, newContent);
+        chainSphere.editComment(0, newContent);
 
     }
 
-    // Test passes
-    // function testOwnerCantEditCommentWithoutPaying() public registerThreeUsersAndPost {
-    //     // Test is expected to revert because a user will try editing their comment without making payment
-
-    //     // Get the address of the author of the first post 
-    //     address firstUser = chainSphere.getPostById(0).author;
-    //     string memory content = "Praise God";
-    //     string memory newContent = "For He is good";
-
-    //     vm.prank(firstUser);
-    //     chainSphere.createComment(0, content); // user 0 comments on their post 
-
-    //     vm.expectRevert(
-    //         ChainSphere.ChainSphere__PaymentNotEnough.selector
-    //     );
-    //     vm.prank(firstUser);
-    //     chainSphere.editComment(0, 0, newContent);
-    // }
-
+    
     // Test passes
     function testOwnerCanEditComment() public registerThreeUsersAndPost {
         // Test is expected to pass because a user will pay for editing their post
@@ -764,10 +824,10 @@ contract ChainSphereTest is Test {
         vm.startPrank(firstUser);
         chainSphere.createComment(0, content); // user 0 comments on their post 
         // chainSphere.editComment{value: EDITING_FEE}(0, 0, newContent);
-        chainSphere.editComment(0, 0, newContent);
+        chainSphere.editComment(0, newContent);
         vm.stopPrank();
 
-        string memory retrievedComment = chainSphere.getCommentByPostIdAndCommentId(0,0).content;
+        string memory retrievedComment = chainSphere.getCommentByCommentId(0).content;
         assertEq(
             keccak256(abi.encodePacked(retrievedComment)),
             keccak256(abi.encodePacked(newContent))
@@ -792,10 +852,10 @@ contract ChainSphereTest is Test {
         chainSphere.createComment(0, content); // user 0 comments on their post 
 
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__NotCommentOwner.selector
+            CSComments.ChainSphere__NotCommentOwner.selector
         );
         vm.prank(USER);
-        chainSphere.deleteComment(0, 0);
+        chainSphere.deleteComment{value: EDITING_FEE}(0);
 
     }
 
@@ -811,10 +871,10 @@ contract ChainSphereTest is Test {
         chainSphere.createComment(0, content); // user 0 comments on their post 
 
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__PaymentNotEnough.selector
+            CSPosts.ChainSphere__PaymentNotEnough.selector
         );
         vm.prank(firstUser);
-        chainSphere.deleteComment(0, 0);
+        chainSphere.deleteComment(0);
     }
 
     // Test passes
@@ -827,11 +887,11 @@ contract ChainSphereTest is Test {
 
         vm.startPrank(firstUser);
         chainSphere.createComment(0, content); // user 0 comments on their post 
-        chainSphere.deleteComment{value: EDITING_FEE}(0, 0);
+        chainSphere.deleteComment{value: EDITING_FEE}(0);
         vm.stopPrank();
 
-        string memory retrievedComment = chainSphere.getCommentByPostIdAndCommentId(0,0).content; // retrieve comment after deleting to verify that comment is actually deleted
-        address retrievedAddress = chainSphere.getCommentByPostIdAndCommentId(0, 0).author;
+        string memory retrievedComment = chainSphere.getCommentByCommentId(0).content; // retrieve comment after deleting to verify that comment is actually deleted
+        address retrievedAddress = chainSphere.getCommentByCommentId(0).author;
 
         // assert that comment is now empty i.e. comment is deleted
         assertEq(
@@ -859,10 +919,10 @@ contract ChainSphereTest is Test {
         chainSphere.createComment(0, content); // user 0 comments on their post 
 
         vm.expectRevert(
-            ChainSphereVars.ChainSphere__UserDoesNotExist.selector
+            CSUserProfile.ChainSphere__UserDoesNotExist.selector
         );
         vm.prank(USER);
-        chainSphere.likeComment(0, 0);
+        chainSphere.likeComment(0);
 
     }
 
@@ -878,11 +938,11 @@ contract ChainSphereTest is Test {
         vm.prank(firstUser);
         chainSphere.createComment(0, content); // user 0 comments on their post 
         vm.prank(secondUser);
-        chainSphere.likeComment(0, 0);
+        chainSphere.likeComment(0);
         vm.stopPrank();
 
-        uint256 retrievedLikes = chainSphere.getCommentByPostIdAndCommentId(0,0).likesCount; // retrieve the number of likes of comment
-        address retrievedAddress = chainSphere.getCommentLikersByPostIdAndCommentId(0, 0)[0];
+        uint256 retrievedLikes = chainSphere.getCommentByCommentId(0).likesCount; // retrieve the number of likes of comment
+        address retrievedAddress = chainSphere.getCommentLikersByCommentId(0)[0];
 
         // assert that comment was liked i.e. likes = 1
         assertEq(
@@ -1004,9 +1064,11 @@ contract ChainSphereTest is Test {
     ///////////////////////
     ///  performUpkeep  ///
     //////////////////////
-    function testPerformUpkeepCanOnlyRunIfCheckUpkeepIsTrue() public registerTenUsersWhoPostAndCastVotes timePassed {
+    function testPerformUpkeepCanOnlyRunIfCheckUpkeepIsTrue() public registerTenUsersWhoPostAndCastVotes timePassed skipFork{
+        bytes memory myData = abi.encodePacked("0x0");
         vm.deal(address(chainSphere), STARTING_BALANCE);
-        chainSphere.performUpkeep(" ");
+        // chainSphere.performUpkeep(" ");
+        chainSphere.performUpkeep(myData);
 
     }
 
@@ -1016,7 +1078,7 @@ contract ChainSphereTest is Test {
         uint256 eligiblePosts = chainSphere.getIdsOfEligiblePosts().length;
         vm.expectRevert(
             abi.encodeWithSelector(
-                ChainSphereVars.ChainSphere__UpkeepNotNeeded.selector,
+                CSPosts.ChainSphere__UpkeepNotNeeded.selector,
                 currentBalance,
                 eligiblePosts
             )
@@ -1026,7 +1088,7 @@ contract ChainSphereTest is Test {
     }
 
     function testPerformUpkeepEmitsRequestId() 
-        public registerTenUsersWhoPostAndCastVotes timePassed {
+        public registerTenUsersWhoPostAndCastVotes timePassed skipFork {
         vm.recordLogs(); // saves all output logs
         vm.deal(address(chainSphere), STARTING_BALANCE);
         chainSphere.performUpkeep(" "); // emits requestId
