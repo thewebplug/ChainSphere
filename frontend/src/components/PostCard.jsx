@@ -291,7 +291,7 @@ const handleCreateComment = async (e, id) => {
               //     "aria-labelledby": "basic-button",
               //   }}
             >
-              <MenuItem
+              {/* <MenuItem
                 sx={{
                   width: "150px",
                   fontSize: "14px",
@@ -304,7 +304,7 @@ const handleCreateComment = async (e, id) => {
                 className="subMenu"
               >
                 Edit post
-              </MenuItem>
+              </MenuItem> */}
               <MenuItem
                 sx={{
                   width: "150px",
@@ -326,7 +326,7 @@ const handleCreateComment = async (e, id) => {
             {post?.content}
             <img
               className="post-card__content__post__img pointer"
-              src={`https://gateway.pinata.cloud/ipfs/${post.imgHash}`}
+              src={`https://amethyst-abundant-squid-138.mypinata.cloud/ipfs/${post?.imgHash}`}
               alt=""
               onClick={() => setImageModal(true)}
             />

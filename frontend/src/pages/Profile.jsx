@@ -141,13 +141,14 @@ export default function Profile() {
 }
 
   const editProfile = async (e) => {
+    setLoading(true)
     e.preventDefault();
     try {
       // Call the editUserProfile function on the smart contract
       // await contract.editUserProfile(userId, bio, "profileImageHash", name);
       const imgHash = await pinFileToIPFS(image);
 console.log('pinata!', imgHash);
-      await contract.methods.editUserProfile(userId, bio, imgHash, name).send({ from: account });
+      await contract.methods.editUserProfile(userId, bio, imgHash?.IpfsHash, name).send({ from: account });
 
       // Reset form fields after successful submission
       // setUserId('');
@@ -159,6 +160,8 @@ console.log('pinata!', imgHash);
       console.error('Error updating profile:', error);
       alert('Error updating profile. Please try again.');
     }
+    setLoading(false)
+
   };
 
   return (
@@ -230,10 +233,10 @@ console.log('pinata!', imgHash);
             <input className="profile__main__timeline__form__input" type="text" value={address} disabled />
             <textarea className="profile__main__timeline__form__input profile__main__timeline__form__textarea" type="text" value={bio}
              onChange={(e) => setBio(e.target.value)} 
-             disabled 
+              
               />
 
-            <button className="profile__main__timeline__form__button" type="submit">Update</button>
+            <button className="profile__main__timeline__form__button" type="submit">{loading ? "Loading..." : "Update"}</button>
             <button className="profile__main__timeline__form__button profile__main__timeline__form__logout" onClick={handleLogout}>Logout</button>
           </form>}
         </div>

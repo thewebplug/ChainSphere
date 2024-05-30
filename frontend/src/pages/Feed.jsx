@@ -101,10 +101,13 @@ export default function Feed() {
         try {
           // Call the smart contract function to get all posts
           const allPosts = await contract.methods.getAllPosts().call();
-          console.log('kylian', allPosts);
-          const tmp = posts?.sort((a, b) => Number(b.upvotes) - Number(a.upvotes));
-          console.log('tmpp', tmp);
+          const trendingPosts = await contract.methods.getAllPosts().call();
+          const allWinnigPosts = await contract.methods.getRecentWinningPosts().call();
           setPosts(allPosts.reverse());
+          console.log('kylian', allPosts);
+          console.log('dembele1', allWinnigPosts);
+          const tmp = trendingPosts?.sort((a, b) => Number(b.upvotes) - Number(a.upvotes));
+          console.log('tmpp', tmp);
           setTrendingPosts(tmp);
     
         } catch (error) {
