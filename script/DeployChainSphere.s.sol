@@ -41,9 +41,9 @@ contract DeployChainSphere is Script {
             vrfCoordinator,
             gasLane,
             subscriptionId,
-            callbackGasLimit,
-            link,
-            deployerKey
+            callbackGasLimit
+            // link,
+            // deployerKey
         );
         vm.stopBroadcast();
 

@@ -15,7 +15,7 @@ fund-subscription:
 	@forge script script/Interactions.s.sol:FundSubscription --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast -vvvv
 
 deploy-sepolia:
-	@forge script script/DeployChainSphere.s.sol:DeployChainSphere --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvv
+	@forge script script/DeployChainSphere.s.sol:DeployChainSphere --rpc-url $(SEPOLIA_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvvv
 
 deploy-polygon_amoy:
 	@forge create script/DeployChainSphere.s.sol:DeployChainSphere --rpc-url $(POLYGON_AMOY_TESTNET_RPC_URL) --verify --verifier etherscan --verifier-url $(OKLINK_URL) --etherscan-api-key $(POLYGON_AMOY_API_KEY) --private-key $(PRIVATE_KEY) --legacy
