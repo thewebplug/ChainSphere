@@ -85,7 +85,8 @@ export default function Login() {
       }
     } catch (error) {
       console.error('Error logging in:', error);
-      alert('Failed to login');
+      alert(`Failed to login ${error?.message || error?.toString()}`);
+
     }
     setLoading(false)
   };

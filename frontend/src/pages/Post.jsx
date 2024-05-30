@@ -32,6 +32,8 @@ export default function Post() {
       setPost(post);
     } catch (error) {
       console.error('Error fetching posts:', error);
+      alert(`Failed to fetch post ${error?.message || error?.toString()}`);
+
     }
   };
 

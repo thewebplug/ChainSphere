@@ -112,6 +112,8 @@ export default function Feed() {
     
         } catch (error) {
           console.error(error);
+          alert(`Failed to fetch posts ${error?.message || error?.toString()}`);
+
         }
       }
     };

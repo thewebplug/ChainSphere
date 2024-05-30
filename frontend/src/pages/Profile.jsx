@@ -53,6 +53,7 @@ export default function Profile() {
       setPosts(posts);
     } catch (error) {
       console.error('Error fetching posts:', error);
+      alert(`Failed to fetch posts ${error?.message || error?.toString()}`);
     }
   };
 
@@ -67,6 +68,7 @@ export default function Profile() {
         fetchUserPosts(myContract, accounts[0]);
       }).catch(error => {
         console.error("User denied account access");
+        alert("User denied account access");
       });
     } else {
       alert('MetaMask not detected. Please install MetaMask to use this feature.');
@@ -99,7 +101,8 @@ export default function Profile() {
       }
     } catch (error) {
       console.error('Error logging in:', error);
-      alert('Failed to login');
+      alert(`Failed to get user info ${error?.message || error?.toString()}`);
+
     }
     setLoading(false)
   };
@@ -136,6 +139,8 @@ export default function Profile() {
         return res.data;
       } catch (error) {
         console.log(error);
+        alert(`Failed to upload image ${error?.message || error?.toString()}`);
+
       }
     }
 }
@@ -158,7 +163,7 @@ console.log('pinata!', imgHash);
       alert('Profile updated successfully!');
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Error updating profile. Please try again.');
+      alert(`Failed to update profile ${error?.message || error?.toString()}`);
     }
     setLoading(false)
 
@@ -187,7 +192,7 @@ console.log('pinata!', imgHash);
             </h1>
           </div>
          {tab === "posts" && <div className="profile__main__timeline__cards">
-         {posts?.map((post) => <PostCard getUsersPosts={initFetchUserPosts} post = {post} />)}
+         {posts?.map((post) => post?.author !== "0x0000000000000000000000000000000000000000" && <PostCard getUsersPosts={initFetchUserPosts} post = {post} />)}
 
           </div>}
 

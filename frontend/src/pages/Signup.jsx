@@ -49,7 +49,8 @@ export default function Signup() {
       navigate("/login")
     } catch (error) {
       console.error('Error registering user:', error);
-      alert('Failed to register user');
+      alert(`Failed to register user ${error?.message || error?.toString()}`);
+
     }
     setLoading(false)
   };

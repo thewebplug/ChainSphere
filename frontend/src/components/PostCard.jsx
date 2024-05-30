@@ -88,8 +88,9 @@ export default function PostCard({post, getUsersPosts}) {
       setLoading(false);
       setDownvotes(downvotes + 1)
   } catch (err) {
-      console.error('Error upvoting post:', err);
+      console.error('Error downvoting post:', err);
       setError(err.message || err.toString());
+      alert(`Failed to downvote post ${err?.message || err?.toString()}`);
       setLoading(false);
   }
   };
@@ -109,8 +110,8 @@ const upvotePost = async (id) => {
     await contract.methods.upvote(Number(id)).send({ from: account });
     setUpvotes(upvotes + 1);
   } catch (error) {
-    console.error('Error creating post:', error);
-    alert('Failed to create post');
+    console.error('Error upvoting post:', error);
+    alert(`Failed to upvote post ${error?.message || error?.toString()}`);
   }
   setLoading(false)
 
@@ -146,7 +147,7 @@ const handleDeletePost = async (id) => {
       // Prompt the user to enter the amount in MetaMask
       const ethAmountInWei = await signer.sendTransaction({
           to: contractAddress,
-          value: ethers.utils.parseEther('0.0013'), // Placeholder value to prompt MetaMask
+          value: ethers.utils.parseEther('0.0015'), // Placeholder value to prompt MetaMask
       });
 
       console.log(`ETH Amount in Wei: ${ethAmountInWei.value.toString()}`);
@@ -176,6 +177,7 @@ const handleDeletePost = async (id) => {
       setAnchorEl(null);
   } catch (error) {
       console.error('Error deleting post:', error);
+      alert(`Error deleting post ${error?.message}`);
       setStatus(`Error: ${error.message}`);
   }
   setLoading(false)
@@ -233,6 +235,7 @@ const handleCreateComment = async (e, id) => {
     // Clear the content after submitting the comment
     // setContent('');
   } catch (error) {
+    alert(`Failed to create comment ${error?.message}`)
     console.error('Error creating comment:', error);
   }
 };
