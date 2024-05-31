@@ -42,8 +42,6 @@ contract DeployChainSphere is Script {
             gasLane,
             subscriptionId,
             callbackGasLimit
-            // link,
-            // deployerKey
         );
         vm.stopBroadcast();
 

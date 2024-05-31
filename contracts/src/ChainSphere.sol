@@ -24,39 +24,47 @@
 
 pragma solidity ^0.8.18;
 
-/// @dev Implements Chainlink VRFv2, Automation and Price Feed
+/// @dev Implements Chainlink VRFv2.5, Automation and Price Feed
 
 import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
-// import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 import {PriceConverter} from "./PriceConverter.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-// import { ChainSphereVars as CSVars}  from "./ChainSphereVars.sol";
 import { ChainSphereUserProfile as CSUserProfile}  from "./ChainSphereUserProfile.sol";
 import { ChainSpherePosts as CSPosts}  from "./ChainSpherePosts.sol";
 import { ChainSphereComments as CSComments}  from "./ChainSphereComments.sol";
 
-contract ChainSphere is CSUserProfile, CSPosts, CSComments {
+contract ChainSphere is VRFConsumerBaseV2, CSUserProfile, CSPosts, CSComments {
     using PriceConverter for uint256;
-    // VRFv2Consumer public vrfConsumer;
+    
 
     //////////////
     /// Errors ///
     //////////////
     error ChainSphere__NotOwner();
 
-    
-    // VRF2 Immutables
-    // @dev duration of the lottery in seconds
-    // uint256 private immutable i_interval; // Period that must pass before a set of posts can be adjudged eligible for reward based on their postScore
-    // VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
-    // bytes32 private immutable i_gasLane;
-    // uint256 private immutable i_subscriptionId;
-    // uint32 private immutable i_callbackGasLimit;
+    // Imported Variables
+    AggregatorV3Interface private s_priceFeed;
 
-    // uint256 private s_lastTimeStamp;
+    // Constants
+
+    // VRF2 Constants
+    uint16 private constant REQUEST_CONFIRMATIONS = 3;
+    uint8 private constant TEN = 10; // Maximum percentage of winners to be picked out of an array of eligible authors
+    uint8 private constant TWENTY = 20; // Number of eligible authors beyond which a maximum of 10% will be picked for award
+    uint8 private constant HUNDRED = 100;
+
+    
+    uint32 private s_numOfWords; // number of random words to request from the Chainlink Oracle
+
+    uint256 private immutable i_interval; // Period that must pass before a set of posts can be adjudged eligible for reward based on their postScore
+    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+    bytes32 private immutable i_gasLane;
+    uint256 private immutable i_subscriptionId;
+    uint32 private immutable i_callbackGasLimit;
+
+    uint256 private s_lastTimeStamp;
     address private s_owner; // would have made this variable immutable but for the changes_Owner function in the contract
-    
-
     
 
     /////////////////
@@ -89,17 +97,15 @@ contract ChainSphere is CSUserProfile, CSPosts, CSComments {
         uint32 callbackGasLimit
         // address link,
         // uint256 deployerKey
-    ) CSComments(
-        priceFeed, interval, vrfCoordinator, gasLane, subscriptionId, callbackGasLimit
-    ){
+    ) VRFConsumerBaseV2(vrfCoordinator) CSComments(priceFeed){
         s_owner = msg.sender;
-        // s_priceFeed = AggregatorV3Interface(priceFeed);
-        // i_interval = interval;
-        // s_lastTimeStamp = block.timestamp;
-        // i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinator);
-        // i_gasLane = gasLane;
-        // i_subscriptionId = subscriptionId;
-        // i_callbackGasLimit = callbackGasLimit;
+        s_priceFeed = AggregatorV3Interface(priceFeed);
+        i_interval = interval;
+        s_lastTimeStamp = block.timestamp;
+        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinator);
+        i_gasLane = gasLane;
+        i_subscriptionId = subscriptionId;
+        i_callbackGasLimit = callbackGasLimit;
     }
 
     /////////////////
@@ -280,31 +286,159 @@ contract ChainSphere is CSUserProfile, CSPosts, CSComments {
      * 3. the contract has ETH (i.e. the Contract has received some payments)
      * 4. (Implicit) the subscription is funded with LINK
      */
+
     function CheckUpkeep(
         bytes memory /* checkData */
     )
         public
         returns (
-            bool,
+            bool upkeepNeeded,
             bytes memory /* performData */
         )
     {
-        return _checkUpkeep("");
+        // reset the s_idsOfEligiblePosts array 
+        resetIdsOfEligiblePosts();
+
+        // call the _pickEligibleAuthors function to determine authors that are eligible for reward
+        _pickIdsOfEligiblePosts(getIdsOfRecentPosts()); // this updates the s_idsOfEligiblePosts array
+
+        bool timeHasPassed = (block.timestamp - s_lastTimeStamp) >= i_interval; // checks if enough time has passed
+        bool hasBalance = address(this).balance > 0; // Contract has ETH
+        bool hasAuthors = getIdsOfEligiblePosts().length > 0; // Contract has authors eligible for reward
+        upkeepNeeded = (timeHasPassed && hasBalance && hasAuthors);
+        return (upkeepNeeded, "0x0");
     }
 
     function performUpkeep(
-        bytes memory /* performData */
-    ) external returns(uint256) {
-        // bytes memory myData = abi.encodePacked("0x0");
-        _performUpkeep("");
+        bytes calldata /* performData */
+    ) external {
+        // Checks
+
+        (bool upkeepNeeded, ) = CheckUpkeep(" ");
+        if (!upkeepNeeded) {
+            revert ChainSphere__UpkeepNotNeeded(
+                address(this).balance,
+                getIdsOfEligiblePosts().length
+            );
+        }
+
+        // Effects (on our Contract)
+
+        // 1. Request RNG from VRF
+        // 2. Receive the random number generated
+
+        // Interactions (with other Contracts)
+        s_numOfWords = getIdsOfEligiblePosts().length <= TWENTY
+            ? 1
+            : uint32(getIdsOfEligiblePosts().length % TEN); // Pick one winner or a max ten percent of eligible winners
+
+        uint256 requestId = i_vrfCoordinator.requestRandomWords(
+            i_gasLane,
+            i_subscriptionId,
+            REQUEST_CONFIRMATIONS,
+            i_callbackGasLimit,
+            s_numOfWords
+        );
+
+        emit RequestWinningAuthor(requestId);
     }
 
     function fulfillRandomWords(
         uint256, /*requestId*/
         uint256[] memory randomWords
     ) internal override {
-        bytes memory myData = abi.encodePacked("0x0");
-        super.fulfillRandomWords(_performUpkeep(myData), randomWords);
+        // Checks
+
+        // Effects (on our Contract)
+
+        resetIdsOfRecentPosts(); // reset the array of recent posts
+        s_lastTimeStamp = block.timestamp; // reset the timer for the next interval of posts to be considered
+            
+        resetIdsOfRecentWinningPosts(); // reset array of postId of most recent winning posts
+
+        if (randomWords.length == 1) {
+            uint256 WINNING_REWARD = uint256((address(this).balance * TWENTY)/HUNDRED);
+            uint256 ranNumber = randomWords[0] % getIdsOfEligiblePosts().length;
+            uint256 idOfWinningPost = getIdsOfEligiblePosts()[ranNumber]; // get the postId
+            addIdToIdsOfRecentWinningPosts(idOfWinningPost);
+            address payable winner = payable(
+                getPostById(idOfWinningPost).author
+            );
+
+            emit PickedWinner(winner);
+
+            // Interactions (With other Contracts)
+
+            // pay the winner
+            (bool success, ) = winner.call{value: WINNING_REWARD}(""); // c make the winning reward vary according to the income generated on the platform
+            if (!success) {
+                revert ChainSphere__TransferFailed();
+            }
+        } else {
+            uint256 len = randomWords.length;
+            uint256 WINNING_REWARD = uint256((address(this).balance * TWENTY)/(HUNDRED * len));
+            uint256 i;
+            for (i; i < len; ) {
+                uint256 ranNumber = randomWords[i] % getIdsOfEligiblePosts().length;
+                uint256 idOfWinningPost = getIdsOfEligiblePosts()[ranNumber]; // get the postId
+                addIdToIdsOfRecentWinningPosts(idOfWinningPost);
+                address payable winner = payable(
+                    getPostById(idOfWinningPost).author
+                );
+
+                emit PickedWinner(winner);
+
+                // Interactions (With other Contracts)
+
+                // pay the winner
+                (bool success, ) = winner.call{value: WINNING_REWARD}(""); // c make the winning reward vary according to the income generated on the platform
+                if (!success) {
+                    revert ChainSphere__BatchTransferFailed(winner);
+                }
+
+                unchecked {
+                    i++;
+                }
+            }
+        }
+    }
+    
+
+    ///////////////////////
+    // Private Functions //
+    ///////////////////////
+
+    /**
+    * @dev this function resets the array containing the ids of posts eligible for reward. This function is called when the process for selecting the next winner is initiated
+    * @notice only this contract should be able to call this function.
+     */
+    function resetIdsOfEligiblePosts() private {
+        _resetIdsOfEligiblePosts();
+    }
+
+    /**
+    * @dev this function resets the array containing the ids of recent winning post(s). This function is called when the next winner is just about to be selected
+    * @notice only this contract should be able to call this function.
+     */
+    function resetIdsOfRecentWinningPosts() private {
+        _resetIdsOfRecentWinningPosts();
+    }
+
+    /**
+    * @dev this function adds a postId to the array containing the ids of winning post(s). This function is called whenever a winner is selected
+    * @param _idOfWinningPost is the postId to be added to the s_idsOfRecentWinningPosts
+    * @notice only this contract should be able to call this function.
+     */
+    function addIdToIdsOfRecentWinningPosts(uint256 _idOfWinningPost) private {
+        _addIdToIdsOfRecentWinningPosts(_idOfWinningPost);
+    }
+
+    /**
+    * @dev this function resets the array containing the ids of recent post(s). This function is called after a winner is selected. The array is reset so that new posts can be saved in the array for the next selection process. This way, an author doesn't get rewarded more than once on the same post
+    * @notice only this contract should be able to call this function.
+     */
+    function resetIdsOfRecentPosts() private {
+        _resetIdsOfRecentPosts();
     }
 
     //////////////////////
@@ -488,8 +622,5 @@ contract ChainSphere is CSUserProfile, CSPosts, CSComments {
         return _getCommentsByPostId(_postId);
     }
 
-    // function changeOwner(address _newOwner) public onlyOwner {
-    //     s_owner = _newOwner;
-    // }
 
 }
