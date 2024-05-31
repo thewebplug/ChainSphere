@@ -59,7 +59,7 @@ contract ChainSpherePosts is  CSUserProfile {
     AggregatorV3Interface private s_priceFeed;
 
     // Constants
-    uint256 private constant MINIMUM_USD = 5e18;
+    uint256 private immutable i_minimumUsd;
     uint256 private constant MIN_POST_SCORE = 1; // set to 1 for development purpose
 
     /** Variables Relating to Post */
@@ -141,7 +141,7 @@ contract ChainSpherePosts is  CSUserProfile {
     }
 
     modifier _hasPaid() {
-        if (msg.value.getConversionRate(s_priceFeed) < MINIMUM_USD) {
+        if (msg.value.getConversionRate(s_priceFeed) < i_minimumUsd) {
             revert ChainSphere__PaymentNotEnough();
         }
         _;
@@ -151,8 +151,9 @@ contract ChainSpherePosts is  CSUserProfile {
     ///////////////////
     /// Constructor ///
     ///////////////////
-    constructor(address priceFeed){
-        s_priceFeed = AggregatorV3Interface(priceFeed);
+    constructor(address _priceFeed, uint256 _minimumUsd){
+        s_priceFeed = AggregatorV3Interface(_priceFeed);
+        i_minimumUsd = _minimumUsd;
     }
     
     /////////////////

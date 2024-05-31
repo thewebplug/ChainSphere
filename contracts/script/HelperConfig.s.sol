@@ -17,6 +17,7 @@ contract HelperConfig is Script {
         uint32 callbackGasLimit;
         address link;
         uint256 deployerKey;
+        uint256 minimumUsd;
     }
 
     // If we are on local anvil, deploy mocks otherwise
@@ -50,20 +51,22 @@ contract HelperConfig is Script {
             subscriptionId: 40757340564120712736435854386380613541348256225674614166681054503045638503207,
             callbackGasLimit: 2_500_000, // 2,500,000 gas!
             link: 0x779877A7B0D9E8603169DdbD7836e478b4624789,
-            deployerKey: vm.envUint("PRIVATE_KEY")
+            deployerKey: vm.envUint("PRIVATE_KEY"),
+            minimumUsd: 5e18
         });
     }
 
     function getPolygonAmoyConfig() public view returns(NetworkConfig memory){
         return NetworkConfig({
-            priceFeed: 0xF0d50568e3A7e8259E16663972b11910F89BD8e7, // ETH/USD
+            priceFeed: 0x001382149eBa3441043c1c66972b4772963f5D43, // MATIC/USD 0xF0d50568e3A7e8259E16663972b11910F89BD8e7, // ETH/USD
             interval: 30,
             vrfCoordinator: 0x343300b5d84D444B2ADc9116FEF1bED02BE49Cf2,//from Chainlink 0x343300b5d84D444B2ADc9116FEF1bED02BE49Cf2
             gasLane: 0x816bedba8a50b294e5cbd47842baf240c2385f2eaf719edbd4f250a137a8c899, // the key hash from Chainlink
             subscriptionId: 6963410906148681671330769598823940006759907003658603586642213936043556887061,
             callbackGasLimit: 2_500_000, // 2,500,000 gas!
             link: 0x0Fd9e8d3aF1aaee056EB9e802c3A762a667b1904, // 0x0fd9e8d3af1aaee056eb9e802c3a762a667b1904
-            deployerKey: vm.envUint("PRIVATE_KEY")
+            deployerKey: vm.envUint("PRIVATE_KEY"),
+            minimumUsd: 5e16
         });
     }
 
@@ -101,7 +104,8 @@ contract HelperConfig is Script {
             subscriptionId: 0,
             callbackGasLimit: 500_000, // 500,000 gas!
             link: address(link),
-            deployerKey: DEFAULT_ANVIL_KEY
+            deployerKey: DEFAULT_ANVIL_KEY,
+            minimumUsd: 5e18
         });
     }
 }

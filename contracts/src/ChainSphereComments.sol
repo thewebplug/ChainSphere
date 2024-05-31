@@ -65,7 +65,7 @@ contract ChainSphereComments is CSPosts {
     /* For gas efficiency, we declare variables as private and define getter functions for them where necessary */
 
     // Constants
-    uint256 private constant MINIMUM_USD = 5e18;
+    uint256 private immutable i_minimumUsd;
 
     // Mappings
 
@@ -117,7 +117,9 @@ contract ChainSphereComments is CSPosts {
     /// Constructor ///
     ///////////////////
 
-    constructor(address priceFeed) CSPosts(priceFeed){}
+    constructor(address _priceFeed, uint256 _minimumUsd) CSPosts(_priceFeed, _minimumUsd){
+        i_minimumUsd = _minimumUsd;
+    }
 
     /////////////////
     /// Functions ///
