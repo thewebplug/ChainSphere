@@ -12,7 +12,7 @@ contract CreateSubscription is Script{
 
     function createSubscriptionUsingConfig() public returns (uint256){
         HelperConfig helperConfig = new HelperConfig();
-        ( , , address vrfCoordinator, , , , ,uint256 deployerKey ) = helperConfig.activeNetworkConfig();
+        ( , , address vrfCoordinator, , , , ,uint256 deployerKey, ) = helperConfig.activeNetworkConfig();
         return createSubscription(vrfCoordinator, deployerKey);
     }
 
@@ -46,7 +46,8 @@ contract FundSubscription is Script{
              uint256 subId, 
              ,
              address link,
-             uint256 deployerKey
+             uint256 deployerKey,
+
         ) = helperConfig.activeNetworkConfig();
 
         fundSubscription(vrfCoordinator, subId, link, deployerKey);
@@ -112,7 +113,8 @@ contract AddConsumer is Script {
              uint256 subId, 
              ,
              ,
-             uint256 deployerKey
+             uint256 deployerKey,
+
         ) = helperConfig.activeNetworkConfig();
         addConsumer(chainSphere, vrfCoordinator, subId, deployerKey);
     }
