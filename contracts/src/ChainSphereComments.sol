@@ -24,16 +24,9 @@
 
 pragma solidity ^0.8.18;
 
-/// @dev Implements Chainlink VRFv2, Automation and Price Feed
-
-import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
-// import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
-// import {PriceConverter} from "./PriceConverter.sol";
-import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import { ChainSpherePosts as CSPosts}  from "./ChainSpherePosts.sol";
 
 contract ChainSphereComments is CSPosts {
-    
 
     //////////////
     /// Errors ///
@@ -70,9 +63,6 @@ contract ChainSphereComments is CSPosts {
     ///////////////////////
 
     /* For gas efficiency, we declare variables as private and define getter functions for them where necessary */
-
-    // Imported Variables
-    AggregatorV3Interface private s_priceFeed;
 
     // Constants
     uint256 private constant MINIMUM_USD = 5e18;
@@ -123,18 +113,12 @@ contract ChainSphereComments is CSPosts {
         _;
     }
 
+    ///////////////////
+    /// Constructor ///
+    ///////////////////
 
-    constructor(
-        address priceFeed,
-        uint256 interval,
-        address vrfCoordinator,
-        bytes32 gasLane,
-        uint256 subscriptionId,
-        uint32 callbackGasLimit
-    ) CSPosts(
-        priceFeed, interval, vrfCoordinator, gasLane, subscriptionId, callbackGasLimit
-    ){}
-    
+    constructor(address priceFeed) CSPosts(priceFeed){}
+
     /////////////////
     /// Functions ///
     /////////////////
@@ -183,7 +167,6 @@ contract ChainSphereComments is CSPosts {
     ) public _onlyCommentOwner(_postId, _commentId) {
         // get the comment from the Blockchain (call by reference) and update it
         s_postIdToComments[_postId][_commentId].content = _content;
-        // s_comments[_commentId].content = _content;
     }
 
 
@@ -197,8 +180,6 @@ contract ChainSphereComments is CSPosts {
         // get the comment from the Blockchain (call by reference) and update it
         s_postIdToComments[_postId][_commentId].content = ""; // delete content
         s_postIdToComments[_postId][_commentId].author = address(0); // delete address of comment author
-        // s_comments[_commentId].content = ""; // delete content
-        // s_comments[_commentId].author = address(0); // delete address of comment author
     }
 
     /**
@@ -226,8 +207,6 @@ contract ChainSphereComments is CSPosts {
     // Getter Functions //
     //////////////////////
 
-    
-    
     /**
     * @dev function retrieves all information about a comment on a post given the postId and the commentId
     * @param _commentId is the id of the comment. 
@@ -278,19 +257,6 @@ contract ChainSphereComments is CSPosts {
         }
 
         return s_postIdToComments[_postId];
-        
-        // uint256[] memory commentIds = s_postIdToCommentsId[_postId];
-        // uint256 len = commentIds.length;
-        // for(uint256 i; i < len; ){
-        //     s_postIdToComments[_postId].push(
-        //         _getCommentByCommentId(commentIds[i])
-        //     );
-
-        //     unchecked {
-        //         i++;
-        //     }
-        // }
-
         
     }
 
