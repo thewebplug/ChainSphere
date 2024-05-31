@@ -11,13 +11,17 @@ import Links from "../components/Links";
 import { contractABI, contractAddress } from "../contractDetails";
 import Web3 from 'web3';
 import { ethers } from "ethers";
+import {useSelector } from "react-redux";
 
 export default function Post() {
+  const auth = useSelector((state) => state.auth);
+
   const [tab, setTab] = useState("home");
   const [web3, setWeb3] = useState(null);
   const [account, setAccount] = useState('');
   const [contract, setContract] = useState(null);
   const [post, setPost] = useState(null);
+  const [comments, setComments] = useState(null);
 
   const pathname = useParams();
 
@@ -28,8 +32,11 @@ export default function Post() {
     console.log('i dey here mehn');
     try {
       const post = await contract.methods.getPostById(Number(pathname?.id)).call();
+      const postComments = await contract.methods.getCommentsByPostId(Number(pathname?.id)).call();
       console.log('single post', post);
+      console.log('postComments', postComments);
       setPost(post);
+      setComments(postComments.reverse())
     } catch (error) {
       console.error('Error fetching posts:', error);
       alert(`Failed to fetch post ${error?.message || error?.toString()}`);
@@ -67,7 +74,7 @@ export default function Post() {
       <Sidebar />
         <div className="feed__main__timeline">
           <div className="feed__main__timeline__cards">
-            <PostCard post={post}/>
+            <PostCard post={post} comments={comments} reloadPost={getUsersPosts}/>
           </div>
         </div>
         <Links />

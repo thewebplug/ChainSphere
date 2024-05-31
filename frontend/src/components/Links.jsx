@@ -14,11 +14,11 @@ export default function Links() {
         <div className="links">
     <div className="links__inner">
     <div className="links__inner__profile-group">
-      <img
+      {!!auth?.userInfo?.profilePic && <img
         className="links__inner__profile-group__img"
-        src={Image1}
+        src={`https://gateway.pinata.cloud/ipfs/${auth?.userInfo?.profilePic}`}
         alt=""
-      />
+      />}
       <div className="links__inner__profile-group__name">
         <div>{auth?.userInfo?.name}</div>
         <div>@{auth?.userInfo?.username}</div>
@@ -124,7 +124,7 @@ export default function Links() {
     </div>
 
     </div>
-    <div className="links__currencies">
+    {/* <div className="links__currencies">
     <div className="links__currencies__card">
               <div className="links__currencies__card__icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">
@@ -192,7 +192,7 @@ export default function Links() {
                 </div>
               </div>
             </div>
-    </div>
+    </div> */}
   </div>
     )
 
