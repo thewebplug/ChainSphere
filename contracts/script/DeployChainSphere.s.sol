@@ -19,7 +19,8 @@ contract DeployChainSphere is Script {
             uint256 subscriptionId,
             uint32 callbackGasLimit,
             address link,
-            uint256 deployerKey
+            uint256 deployerKey,
+            uint256 minimumUsd
         ) = helperConfig.activeNetworkConfig();
 
         if(subscriptionId == 0){
@@ -41,7 +42,8 @@ contract DeployChainSphere is Script {
             vrfCoordinator,
             gasLane,
             subscriptionId,
-            callbackGasLimit
+            callbackGasLimit,
+            minimumUsd
         );
         vm.stopBroadcast();
 

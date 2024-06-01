@@ -58,6 +58,7 @@ contract ChainSphereTest is Test {
     uint256 subscriptionId;
     uint32 callbackGasLimit;
     address link;
+    uint256 minimumUsd;
 
     // Constants
     uint256 private constant STARTING_BALANCE = 10 ether;
@@ -95,6 +96,8 @@ contract ChainSphereTest is Test {
             subscriptionId,
             callbackGasLimit,
             link,
+            ,
+            minimumUsd
         
         ) = helperConfig.activeNetworkConfig();
         vm.deal(USER, STARTING_BALANCE);

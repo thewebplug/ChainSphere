@@ -94,10 +94,11 @@ contract ChainSphere is VRFConsumerBaseV2, CSUserProfile, CSPosts, CSComments {
         address vrfCoordinator,
         bytes32 gasLane,
         uint256 subscriptionId,
-        uint32 callbackGasLimit
+        uint32 callbackGasLimit,
+        uint256 minimumUsd
         // address link,
         // uint256 deployerKey
-    ) VRFConsumerBaseV2(vrfCoordinator) CSComments(priceFeed){
+    ) VRFConsumerBaseV2(vrfCoordinator) CSComments(priceFeed, minimumUsd){
         s_owner = msg.sender;
         s_priceFeed = AggregatorV3Interface(priceFeed);
         i_interval = interval;
