@@ -194,7 +194,7 @@ contract ChainSphere is VRFConsumerBaseV2, CSUserProfile, CSPosts, CSComments {
      * @param _postId is the id of the post to be deleted
      * @notice The function checks if the user has paid the required fee for deleting post before proceeding with the action. To effect the payment functionality, we include a receive function to enable the smart contract receive ether. Also, we use Chainlink pricefeed to ensure ether is amount has the required usd equivalent
      */
-    function deletePost(uint256 _postId) public payable onlyPostOwner(_postId) _hasPaid {
+    function deletePost(uint256 _postId) public payable onlyPostOwner(_postId)  CSPosts._hasPaid  {
         _deletePost(_postId);
     }
 
@@ -250,7 +250,7 @@ contract ChainSphere is VRFConsumerBaseV2, CSUserProfile, CSPosts, CSComments {
      * @param _commentId is the id of the comment of interest
      * @notice the function checks if the caller is the owner of the comment and has paid the fee for deleting comment
      */
-    function deleteComment(uint256 _postId, uint256 _commentId) public payable _hasPaid {
+    function deleteComment(uint256 _postId, uint256 _commentId) public payable  CSPosts._hasPaid  {
         _deleteComment(_postId, _commentId); 
     }
 
