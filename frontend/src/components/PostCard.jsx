@@ -116,10 +116,12 @@ export default function PostCard({ post, getUsersPosts, comments, reloadPost }) 
       return;
     }
 
+    setUpvotes(upvotes + 1);
     try {
       await contract.methods.upvote(Number(id)).send({ from: account });
-      setUpvotes(upvotes + 1);
     } catch (error) {
+      setUpvotes(upvotes - 1);
+
       console.error("Error upvoting post:", error);
       alert(`Failed to upvote post ${error?.message || error?.toString()}`);
     }
@@ -149,13 +151,13 @@ export default function PostCard({ post, getUsersPosts, comments, reloadPost }) 
       // Get the address of the current user
       const userAddress = await signer.getAddress();
 
-      // Check if the user is the owner of the post
-      const postAuthor = await contract.s_postIdToAuthor(Number(id));
-      console.log("postAuthor", postAuthor);
+      // // Check if the user is the owner of the post
+      // const postAuthor = await contract.s_postIdToAuthor(Number(id));
+      // console.log("postAuthor", postAuthor);
 
-      if (postAuthor !== userAddress) {
-        throw new Error("You are not the owner of this post");
-      }
+      // if (postAuthor !== userAddress) {
+      //   throw new Error("You are not the owner of this post");
+      // }
 
       // Prompt the user to enter the amount in MetaMask
       const ethAmountInWei = await signer.sendTransaction({
