@@ -82,8 +82,13 @@ export default function PostCard({ post, getUsersPosts, comments, reloadPost }) 
   }, []);
 
   const handleDownVote = async (id) => {
+    setLoading(true);
+    if (!contract) {
+      alert("Contract not loaded");
+      return;
+    }
+    setDownvotes(downvotes + 1);
     try {
-      setLoading(true);
       setError(null);
 
       const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -99,8 +104,9 @@ export default function PostCard({ post, getUsersPosts, comments, reloadPost }) 
       await contractWithSigner.downvote(Number(id));
 
       setLoading(false);
-      setDownvotes(downvotes + 1);
     } catch (err) {
+      setDownvotes(downvotes - 1);
+
       console.error("Error downvoting post:", err);
       setError(err.message || err.toString());
       alert(`Failed to downvote post ${err?.message || err?.toString()}`);
@@ -349,7 +355,7 @@ export default function PostCard({ post, getUsersPosts, comments, reloadPost }) 
       >
         <img
           className="post-card__img"
-          src={`https://amethyst-abundant-squid-138.mypinata.cloud/ipfs/${post?.authorProfileImgHash}`}
+          src={!!post?.authorProfileImgHash ? `https://amethyst-abundant-squid-138.mypinata.cloud/ipfs/${post?.authorProfileImgHash}` : Image1}
           alt=""
         />
         <div className="post-card__content">
@@ -438,12 +444,12 @@ export default function PostCard({ post, getUsersPosts, comments, reloadPost }) 
           </div>
           <div className="post-card__content__post">
             {post?.content}
-            <img
+            {!!post?.imgHash && <img
               className="post-card__content__post__img pointer"
               src={`https://amethyst-abundant-squid-138.mypinata.cloud/ipfs/${post?.imgHash}`}
               alt=""
               onClick={() => setImageModal(true)}
-            />
+            />}
           </div>
           <div className="post-card__content__actions">
             <div
@@ -700,7 +706,9 @@ export default function PostCard({ post, getUsersPosts, comments, reloadPost }) 
               />
             </svg>
 
-            <img src={Image2} alt="" />
+            <img 
+              src={`https://amethyst-abundant-squid-138.mypinata.cloud/ipfs/${post?.imgHash}`}
+              alt="" />
           </div>
         )}
       </div>
