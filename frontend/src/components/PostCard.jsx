@@ -12,7 +12,7 @@ import { useDispatch, useSelector } from "react-redux";
 import moment from "moment";
 
 export default function PostCard({ post, getUsersPosts, comments, reloadPost }) {
-  const MINIMUM_USD = ethers.utils.parseUnits("5", 18); // 5 USD in wei
+  const MINIMUM_USD = ethers.utils.parseUnits("1", 18); // 5 USD in wei
   console.log("helo90", Number(post?.upvotes));
   const auth = useSelector((state) => state.auth);
   const [error, setError] = useState(null);
@@ -114,6 +114,50 @@ export default function PostCard({ post, getUsersPosts, comments, reloadPost }) 
     }
   };
 
+  const polygonAmoyNetwork = {
+    chainId: '0x13882', // Hexadecimal representation of 137
+    chainName: 'POLYGON AMOY TESTNET',
+    nativeCurrency: {
+      name: 'MATIC',
+      symbol: 'MATIC',
+      decimals: 18,
+    },
+    rpcUrls: ['https://rpc-amoy.polygon.technology/'], // Replace with the actual RPC URL of Polygon Amoy
+    blockExplorerUrls: ['https://amoy.polygonscan.com/'],
+  };
+
+  const checkMetaMask = () => {
+    if (typeof window.ethereum !== "undefined") {
+      return true;
+    } else {
+      console.error("MetaMask is not installed");
+      return false;
+    }
+  };
+
+  const switchNetwork = async () => {
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: polygonAmoyNetwork.chainId }],
+      });
+    } catch (switchError) {
+      // This error code indicates that the chain has not been added to MetaMask
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [polygonAmoyNetwork],
+          });
+        } catch (addError) {
+          console.error('Error adding Polygon Amoy network:', addError);
+        }
+      } else {
+        console.error('Error switching to Polygon Amoy network:', switchError);
+      }
+    }
+  };
+
   const upvotePost = async (id) => {
     // e.preventDefault();
     setLoading(true);
@@ -135,7 +179,12 @@ export default function PostCard({ post, getUsersPosts, comments, reloadPost }) 
   };
 
   const handleDeletePost = async (id) => {
+    if (!checkMetaMask()) {
+      return;
+    }
     setLoading(true);
+    
+
     try {
       if (!window.ethereum) {
         throw new Error("MetaMask is not installed");
@@ -143,9 +192,9 @@ export default function PostCard({ post, getUsersPosts, comments, reloadPost }) 
 
       // Request account access if needed
       await window.ethereum.request({ method: "eth_requestAccounts" });
+      await switchNetwork();
 
-      // Specify the SePolia chain ID (replace 321 with the actual chain ID)
-      //   const chainId = 11155111; // Example chain ID for SePolia chain, replace with actual chain ID
+      
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const signer = provider.getSigner();
       const contract = new ethers.Contract(
@@ -154,39 +203,11 @@ export default function PostCard({ post, getUsersPosts, comments, reloadPost }) 
         signer
       );
 
-      // Get the address of the current user
-      const userAddress = await signer.getAddress();
-
-      // // Check if the user is the owner of the post
-      // const postAuthor = await contract.s_postIdToAuthor(Number(id));
-      // console.log("postAuthor", postAuthor);
-
-      // if (postAuthor !== userAddress) {
-      //   throw new Error("You are not the owner of this post");
-      // }
-
-      // Prompt the user to enter the amount in MetaMask
-      const ethAmountInWei = await signer.sendTransaction({
-        to: contractAddress,
-        value: ethers.utils.parseEther("0.0015"), // Placeholder value to prompt MetaMask
-      });
-
-      console.log(`ETH Amount in Wei: ${ethAmountInWei.value.toString()}`);
-
-      // Get USD value of the provided ETH amount
-      const usdValue = await contract.getUsdValueOfEthAmount(
-        ethAmountInWei.value
-      );
-      console.log(`USD Value of ETH Amount: ${usdValue.toString()}`);
-
-      // Check if the USD value is greater than the minimum required USD value
-      if (usdValue.lt(MINIMUM_USD)) {
-        throw new Error("Payment not enough, it must be greater than 5 USD");
-      }
+    
 
       // Call the deletePost function on the smart contract with the necessary payment
       const tx = await contract.deletePost(Number(id), {
-        value: ethAmountInWei.value,
+        value: ethers.utils.parseEther("0.000299"),
       });
       console.log("Transaction sent:", tx);
 
@@ -209,7 +230,9 @@ export default function PostCard({ post, getUsersPosts, comments, reloadPost }) 
   };
 
   const handleDeleteComment = async (postId, commentId) => {
-    console.log('postId', postId, 'commentId', commentId);
+    if (!checkMetaMask()) {
+      return;
+    }
     setLoading(true);
     try {
       if (!window.ethereum) {
@@ -218,9 +241,8 @@ export default function PostCard({ post, getUsersPosts, comments, reloadPost }) 
 
       // Request account access if needed
       await window.ethereum.request({ method: "eth_requestAccounts" });
+      await switchNetwork();
 
-      // Specify the SePolia chain ID (replace 321 with the actual chain ID)
-      //   const chainId = 11155111; // Example chain ID for SePolia chain, replace with actual chain ID
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const signer = provider.getSigner();
       const contract = new ethers.Contract(
@@ -229,39 +251,12 @@ export default function PostCard({ post, getUsersPosts, comments, reloadPost }) 
         signer
       );
 
-      // Get the address of the current user
-      const userAddress = await signer.getAddress();
+    
 
-      // Check if the user is the owner of the post
-      // const postAuthor = await contract.s_postIdToAuthor(Number(postId));
-      // console.log("postAuthor", postAuthor);
-
-      // if (postAuthor !== userAddress) {
-      //   throw new Error("You are not the owner of this post");
-      // }
-
-      // Prompt the user to enter the amount in MetaMask
-      const ethAmountInWei = await signer.sendTransaction({
-        to: contractAddress,
-        value: ethers.utils.parseEther("0.0015"), // Placeholder value to prompt MetaMask
-      });
-
-      console.log(`ETH Amount in Wei: ${ethAmountInWei.value.toString()}`);
-
-      // Get USD value of the provided ETH amount
-      const usdValue = await contract.getUsdValueOfEthAmount(
-        ethAmountInWei.value
-      );
-      console.log(`USD Value of ETH Amount: ${usdValue.toString()}`);
-
-      // Check if the USD value is greater than the minimum required USD value
-      if (usdValue.lt(MINIMUM_USD)) {
-        throw new Error("Payment not enough, it must be greater than 5 USD");
-      }
 
       // Call the deletePost function on the smart contract with the necessary payment
       const tx = await contract.deleteComment(Number(postId), Number(commentId), {
-        value: ethAmountInWei.value,
+        value: ethers.utils.parseEther("0.000299"),
       });
       console.log("Transaction sent:", tx);
 
@@ -301,14 +296,7 @@ export default function PostCard({ post, getUsersPosts, comments, reloadPost }) 
     }
   };
 
-  const checkMetaMask = () => {
-    if (typeof window.ethereum !== "undefined") {
-      return true;
-    } else {
-      console.error("MetaMask is not installed");
-      return false;
-    }
-  };
+ 
 
   const handleCreateComment = async (e, id) => {
     console.log("my post id", Number(id));
