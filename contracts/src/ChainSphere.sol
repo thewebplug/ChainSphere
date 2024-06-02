@@ -96,8 +96,6 @@ contract ChainSphere is VRFConsumerBaseV2, CSUserProfile, CSPosts, CSComments {
         uint256 subscriptionId,
         uint32 callbackGasLimit,
         uint256 minimumUsd
-        // address link,
-        // uint256 deployerKey
     ) VRFConsumerBaseV2(vrfCoordinator) CSComments(priceFeed, minimumUsd){
         s_owner = msg.sender;
         s_priceFeed = AggregatorV3Interface(priceFeed);
@@ -109,17 +107,26 @@ contract ChainSphere is VRFConsumerBaseV2, CSUserProfile, CSPosts, CSComments {
         i_callbackGasLimit = callbackGasLimit;
     }
 
-    /////////////////
-    /// Functions ///
-    /////////////////
+    //////////////////////////////////////////
+    /// The Receive and Fallback Functions ///
+    //////////////////////////////////////////
 
-    // The receive function
     /**
      * @dev this function enables the Smart Contract to receive payment
+     * @notice this function allows the Contract to receive ETH as value sent alongside a function call in the Smart Contract
      */
     receive() external payable {}
 
+    /**
+     * @dev this function enables the Smart Contract to receive payment
+     * @notice this function allows the Contract to receive ETH even without a function call in the Smart Contract e.g. by just sending ETH using the Contract Address
+     */
     fallback() external payable {}
+
+
+    ////////////////////////
+    /// Public Functions ///
+    ////////////////////////
 
     /**
     * @dev This function enables a user to be registered on ChainSphere
@@ -224,6 +231,8 @@ contract ChainSphere is VRFConsumerBaseV2, CSUserProfile, CSPosts, CSComments {
 
     /**
      * @dev createComment enables registered users to comment on any post
+     * @param _postId is the id of the post for which user wishes to comment on
+     * @param _content is the text i.e. the comment the user wishes to create on the post
      * @notice Since the postId is unique and can be mapped to author of the post, we only need the postId to uniquely reference any post in order to comment on it
      * Because in any social media platform there are so much more comments than posts, we allow the commentId not to be unique in general. However, comment ids are unique relative to any given post. Our thought is that this will prevent overflow
      */
@@ -236,6 +245,7 @@ contract ChainSphere is VRFConsumerBaseV2, CSUserProfile, CSPosts, CSComments {
 
     /**
      * @dev This function allows only the user who created a comment to edit it.
+     * @param _postId is the id of the post on which the comment was made
      * @param _commentId is the id of the comment of interest
      * @param _content is the new content of the comment
      */
@@ -247,6 +257,7 @@ contract ChainSphere is VRFConsumerBaseV2, CSUserProfile, CSPosts, CSComments {
 
     /**
      * @dev This function allows only the user who created a comment to delete it. 
+     * @param _postId is the id of the post on which the comment was made
      * @param _commentId is the id of the comment of interest
      * @notice the function checks if the caller is the owner of the comment and has paid the fee for deleting comment
      */
@@ -256,6 +267,7 @@ contract ChainSphere is VRFConsumerBaseV2, CSUserProfile, CSPosts, CSComments {
 
     /**
     * @dev this function allows a registered user to like any comment
+    * @param _postId is the id of the post on which the comment was made
     * @param _commentId is the id of the comment in question
     * @notice the function increments the number of likes on the comment by 1 and adds user to an array of likers
      */
