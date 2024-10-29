@@ -17,7 +17,7 @@ function App() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
 
-      <Route path="/feed" element={auth.token ? <Feed /> : <Login />} />
+      <Route path="/feed" element={<Feed />} />
       <Route path="/feed/trending" element={auth.token ? <Feed /> : <Login />} />
       <Route path="/post/:id" element={auth.token ? <Post /> : <Login />}  />
       <Route path="/profile"element={auth.token ? <Profile /> : <Login />} />

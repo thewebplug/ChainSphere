@@ -99,8 +99,10 @@ export default function Feed() {
     const fetchPosts = async () => {
       if (contract) {
         try {
+          console.log('at least got here');
           // Call the smart contract function to get all posts
           const allPosts = await contract.methods.getAllPosts().call();
+          console.log('allPosts', allPosts);
           const trendingPosts = await contract.methods.getAllPosts().call();
           const allWinnigPosts = await contract.methods.getRecentWinningPosts().call();
           setPosts(allPosts.reverse());
