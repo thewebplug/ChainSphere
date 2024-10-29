@@ -4,6 +4,7 @@ module.exports = {
         resolve: {
           fallback: {
             stream: require.resolve('stream-browserify'),
+            process: require.resolve('process/browser'),
             crypto: false
           }
         }
